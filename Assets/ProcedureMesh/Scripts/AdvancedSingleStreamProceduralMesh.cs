@@ -4,6 +4,39 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
+/// <summary>
+/// 进阶：通过 MeshData 设置网格<br/>
+/// 使用之前的简单 API 向网格体分配数据时，Unity 必须在某个时刻将所有数据复制并转换为网格体的原生内存格式；<br/>
+/// 而使用 MeshData 能够直接以网格体的原生内存格式进行操作，避免转换 (直接写入 GPU 顶点/索引缓冲)。<br/>
+/// <br/>
+/// 必须先了解网格的内存布局：<br/>
+/// Mesh 本质就是两块数据:「顶点缓冲」和「索引缓冲」。<br/>
+/// - 顶点缓冲: 存放每个顶点的数据，每块顶点缓冲称为一个「流」(stream)，一个网格最多包含 4 个流。结构: [s0][s1][s2][s3]<br/>
+/// - 索引缓冲: 存放三角面索引。<br/>
+/// <br/>
+/// 顶点数据包括: 位置、法线、UV 和切线。顶点数据可以用不同的分布方式存放在 MeshData 的 stream 中。<br/>
+/// - 单流 (GPU 友好): [P N T UV][P N T UV][P N T UV][P N T UV]<br/>
+/// - 多流 (CPU 友好): [P P P P][N N N N][T T T T][UV UV UV UV]<br/>
+/// 更新网格数据的时候，多流更好 (在 CPU 执行)；真正渲染的时候，单流更好 (在 GPU 渲染)。<br/>
+/// 最终上传到 GPU 时，Unity 可能会内部重排。<br/>
+/// <br/>
+/// 流程:<br/>
+/// 1. 设置顶点缓冲:<br/>
+///    - 定义顶点属性描述: new VertexAttributeDescriptor(VertexAttribute, dimension, stream)<br/>
+///      - 通过 VertexAttribute 枚举表明描述的属性是什么；<br/>
+///      - 通过 stream 指定放在那一块缓冲(流)中。<br/>
+///    - 根据顶点描述数组分配顶点缓冲内存结构: meshData.SetVertexBufferParams(vertexCount, VertexAttributeDescriptor[]);<br/>
+/// 2. 写顶点缓冲:<br/>
+///    - 先读内存 (按指定类型读): T attribute = meshData.GetVertexData&lt;T&gt;();<br/>
+///    - 写入内存: attribute = xxx;<br/>
+/// 3. 设置索引缓冲: meshData.SetIndexBufferParams(indexCount, IndexFormat.UInt32);<br/>
+/// 4. 设置子网格:<br/>
+///    - 设置子网格数量: meshData.subMeshCount = n;<br/>
+///    - 定义子网格描述 (起始索引 + 索引数量): new SubMeshDescriptor(indexStart, indexCount);<br/>
+///    - 根据子网格描述设置子网格: meshData.SetSubMesh(i, SubMeshDescriptor);<br/>
+/// 5. 应用: Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);<br/>
+/// 6. 计算边界 (也可以手动设置 bounds 给网格或子网格): mesh.RecalculateBounds();<br/>
+/// </summary>
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class AdvancedSingleStreamProceduralMesh : MonoBehaviour
 {
@@ -21,36 +54,32 @@ public class AdvancedSingleStreamProceduralMesh : MonoBehaviour
 
     private void OnEnable()
     {
-        // 一个网格最多包含 4 块独立的顶点数据内存区域
+        // 网格数量
+        int meshCount = 1;
+        // 顶点属性数量
         int vertexAttributeCount = 4;
         // 顶点数量
         int vertexCount = 4;
         // 三角形索引数量
         int triangleIndexCount = 6;
 
-        // 单流：
-        // 由于一个网格最多包含 4 块独立的顶点数据内存区域，如果把每个属性单独放一个流，我们最多只能设置 4 种属性
-        // 单流方式就是把不同的属性全部放一个流里面，内存分布就变成了 [P N T UV][P N T UV][P N T UV][P N T UV]
-        Mesh.MeshDataArray meshDataArray = Mesh.AllocateWritableMeshData(1);
+        // --- 定义 MeshData 数组 ---
+        Mesh.MeshDataArray meshDataArray = Mesh.AllocateWritableMeshData(meshCount);
+
+        // --- 开始设置第一个网格数据 ---
         Mesh.MeshData meshData = meshDataArray[0];
 
-        // 必须先了解网格的内存布局：
-        // 网格的内存被划分为多个区域，我们需要重点关注的时顶点区域和索引区域，顶点区域包含一个或多个数据流，这些数据流是格式相同的顶点数据的连续块。
-        // 我们网格的每个顶点都有四个属性：位置、法向量、切线和一组纹理坐标，我们可以将它们分别存储在不同的流中。我们将此称为多流方法 (Multi-Stream)
-        // 单流 (GPU 友好): [P N T UV][P N T UV][P N T UV][P N T UV]
-        // 多流 (CPU 友好): [P P P P][N N N N][T T T T][UV UV UV UV]
-        // 因此，更新网格数据的时候，多流更好 (在 CPU 执行)；真正渲染的时候，单流更好 (在 GPU 渲染)。
-        // 最终上传到 GPU 时，Unity 可能会内部重排。
-
-        // 分配一个临时原生数组，装 VertexAttributeDescriptor 元素，作为 meshData 的内存缓冲
+        // --- 分配一个临时原生数组来装 VertexAttributeDescriptor ---
         // 使用 NativeArrayOptions.UninitializedMemory 能够跳过内存初始化步骤，进一步优化效率
         var vertexAttributes = new NativeArray<VertexAttributeDescriptor>(
             vertexAttributeCount,
             Allocator.Temp,
             NativeArrayOptions.UninitializedMemory
         );
-        // 4 块顶点数据流
-        // dimension 代表数据维度 (float3、float4), stream 代表属于第几个数据流的数据
+
+        // --- 定义每一个 VertexAttributeDescriptor ---
+        // dimension 代表数据维度 (float3、float4), stream 代表属于第几块顶点缓冲 (0 ~ 3，一个网格最多四块顶点缓冲)
+        // 注意到: 这里我们把每个属性全放在了同一个流，这就是单流
         vertexAttributes[0] = new VertexAttributeDescriptor(VertexAttribute.Position, dimension: 3, stream: 0);
         vertexAttributes[1] = new VertexAttributeDescriptor(VertexAttribute.Normal, dimension: 3, stream: 0);
         vertexAttributes[2] = new VertexAttributeDescriptor(
@@ -66,17 +95,15 @@ public class AdvancedSingleStreamProceduralMesh : MonoBehaviour
             format: VertexAttributeFormat.Float16
         );
 
-        // 分配网格的顶点数据流
-        // 内存分布 (4类属性 x 4个顶点): [P][N][T][UV][P][N][T][UV][P][N][T][UV][P][N][T][UV]
+        // --- 设置顶点缓冲 ---
         meshData.SetVertexBufferParams(vertexCount, vertexAttributes);
-        // 分配给网格后记得 Dispose 原生数组
+        // 记得 Dispose 原生数组
         vertexAttributes.Dispose();
 
-        // 读取单个 Vertex 流的 NativeArray
+        // --- 读写顶点缓冲数据 ---
         NativeArray<Vertex> vertices = meshData.GetVertexData<Vertex>();
-
+        // 我们自定义的数据结构
         half h0 = math.half(0f), h1 = math.half(1f);
-
         var vertex = new Vertex { normal = math.back(), tangent = math.half4(h1, h0, h0, math.half(-1f)) };
 
         vertex.position = 0f;
@@ -95,10 +122,11 @@ public class AdvancedSingleStreamProceduralMesh : MonoBehaviour
         vertex.texCoord0 = h1;
         vertices[3] = vertex;
 
-        // 分配网格的索引数据流
+        // --- 设置索引缓冲 ---
         // UInt32 对应 uint，UInt16 对应 ushort
         meshData.SetIndexBufferParams(triangleIndexCount, IndexFormat.UInt16);
-        // 设置索引
+
+        // --- 读写索引缓冲数据 ---
         NativeArray<ushort> triangleIndices = meshData.GetIndexData<ushort>();
         triangleIndices[0] = 0;
         triangleIndices[1] = 2;
@@ -107,11 +135,13 @@ public class AdvancedSingleStreamProceduralMesh : MonoBehaviour
         triangleIndices[4] = 2;
         triangleIndices[5] = 3;
 
-        // 提前创建网格/子网格边界，避免自动计算
+        // 提前创建网格/子网格边界，也可以最后 mesh.RecalculateBounds()
         var bounds = new Bounds(new Vector3(0.5f, 0.5f, 0f), new Vector3(1f, 1f, 0f));
-        // 设置子网格数量
+
+        // --- 设置子网格 ---
+        // 子网格数量
         meshData.subMeshCount = 1;
-        // 设定每个子网格: 起始索引数组下标 + 包含的索引数量
+        // 定义每个子网格: 起始索引数组下标 + 包含的索引数量
         var subMesh = new SubMeshDescriptor(indexStart: 0, indexCount: triangleIndexCount)
         {
             bounds = bounds,
@@ -122,9 +152,11 @@ public class AdvancedSingleStreamProceduralMesh : MonoBehaviour
         };
         meshData.SetSubMesh(0, subMesh);
 
+        // --- 新建 Mesh ---
         // 也可以直接把 bounds 设置给 mesh，那么所有子网都使用相同的边界
         var mesh = new Mesh { name = "Procedural Mesh", bounds = bounds, };
 
+        // --- 应用 MeshData 到 Mesh ---
         Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);
         GetComponent<MeshFilter>().mesh = mesh;
     }
