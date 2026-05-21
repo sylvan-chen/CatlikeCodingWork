@@ -58,6 +58,8 @@ public partial class CameraRenderer
         DrawVisibleGeometry();
         // 绘制不支持的 Shader
         DrawUnsupportedShaders();
+        // 绘制 Gizmos
+        DrawGizmos();
         // 我们必须在上下文上调用 Submit 来提交排队的工作以执行
         Submit();
     }

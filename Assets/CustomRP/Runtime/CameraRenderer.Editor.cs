@@ -1,11 +1,13 @@
-﻿using UnityEngine;
+﻿using UnityEditor;
+using UnityEngine;
 using UnityEngine.Rendering;
 
 /// <summary>
-/// 编辑器专用: 绘制不受支持的 Shader 为粉红色错误材质
+/// 编辑器专用
 /// </summary>
 public partial class CameraRenderer
 {
+    private partial void DrawGizmos();
     private partial void DrawUnsupportedShaders();
 
 #if UNITY_EDITOR
@@ -20,6 +22,18 @@ public partial class CameraRenderer
         new ShaderTagId("VertexLM")
     };
     private static Material ErrorMaterial;
+
+    /// <summary>
+    /// 绘制 Gizmos
+    /// </summary>
+    private partial void DrawGizmos()
+    {
+        if (Handles.ShouldRenderGizmos())
+        {
+            _context.DrawGizmos(_camera, GizmoSubset.PreImageEffects);
+            _context.DrawGizmos(_camera, GizmoSubset.PostImageEffects);
+        }
+    }
 
     /// <summary>
     /// 绘制不支持的 Shader
