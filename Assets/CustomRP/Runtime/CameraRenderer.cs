@@ -7,16 +7,26 @@ using UnityEngine.Rendering;
 public partial class CameraRenderer
 {
     private const string BUFFER_NAME = "Render Camera";
-    private static ShaderTagId UnlitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
+    private static readonly ShaderTagId UnlitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
 
     private ScriptableRenderContext _context;
     private Camera _camera;
 
     /// <summary>
+    /// 缓冲区的名字
+    /// 在编辑器下，我们在 PrepareBuffer() 中为不同相机设置不同的采样区名字，以便在 FrameDebugger 区分
+    /// </summary>
+#if UNITY_EDITOR
+    private string SampleName { get; set; }
+#else
+    private const string SampleName = BUFFER_NAME;
+#endif
+
+    /// <summary>
     /// 一些指令可以通过专有命令直接执行（比如绘制天空盒），但其他命令必须通过 CommandBuffer 间接发出。
     /// 我们可以在适当的位置调用 `BeginSample` 和 `EndSample` 来注入 Profiler
     /// </summary>
-    private CommandBuffer _commandBuffer = new CommandBuffer { name = BUFFER_NAME };
+    private readonly CommandBuffer _commandBuffer = new CommandBuffer { name = BUFFER_NAME };
 
     /// <summary>
     /// 剔除结果
@@ -50,16 +60,27 @@ public partial class CameraRenderer
         // - VR 渲染机制： 在 VR 开发中，Render Target 的管理尤为特殊。因为 VR 头显需要左右眼的画面，在 Single Pass Stereo 渲染模式下，Render Target 实际上是一个 Texture Array（纹理数组）。
         //   GPU 在一次 Draw Call 中同时将左眼结果写入 Array 0，右眼写入 Array 1，随后再经过畸变着色器（Distortion Shader）处理后才真正上屏。
 
+        // ========== 编辑器的准备工作 ==========
+        // CommandBuffer 的准备
+        PrepareBuffer();
+        // Scene 窗口的准备
+        PrepareForSceneWindow();
+
+        // ========== 游戏画面渲染 ==========
         // 先进行剔除
         if (!Cull()) return;
         // 设置属性
         Setup();
         // 绘制所有可见的几何图形
         DrawVisibleGeometry();
+
+        // ========== 编辑器的收尾工作 ==========
         // 绘制不支持的 Shader
         DrawUnsupportedShaders();
         // 绘制 Gizmos
         DrawGizmos();
+
+        // ========== 提交 ==========
         // 我们必须在上下文上调用 Submit 来提交排队的工作以执行
         Submit();
     }
@@ -114,7 +135,7 @@ public partial class CameraRenderer
         // 只有在 SetupCameraProperties 之后执行，才是正常的快速清除 Clear (color+Z+stencil)
         _commandBuffer.ClearRenderTarget(true, true, Color.clear);
 
-        _commandBuffer.BeginSample(BUFFER_NAME);
+        _commandBuffer.BeginSample(SampleName);
         ExecuteBuffer();
     }
 
@@ -157,11 +178,11 @@ public partial class CameraRenderer
     }
 
     /// <summary>
-    /// 提交
+    /// 执行指令以及提交上下文
     /// </summary>
     private void Submit()
     {
-        _commandBuffer.EndSample(BUFFER_NAME);
+        _commandBuffer.EndSample(SampleName);
         ExecuteBuffer();
 
         _context.Submit();

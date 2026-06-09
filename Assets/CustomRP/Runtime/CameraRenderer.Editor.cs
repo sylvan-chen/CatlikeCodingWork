@@ -1,5 +1,6 @@
 ﻿using UnityEditor;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
 /// <summary>
@@ -7,11 +8,12 @@ using UnityEngine.Rendering;
 /// </summary>
 public partial class CameraRenderer
 {
-    private partial void DrawGizmos();
+    private partial void PrepareBuffer();
+    private partial void PrepareForSceneWindow();
     private partial void DrawUnsupportedShaders();
+    private partial void DrawGizmos();
 
 #if UNITY_EDITOR
-
     private static ShaderTagId[] LegacyShaderTagIds =
     {
         new ShaderTagId("Always"),
@@ -24,14 +26,25 @@ public partial class CameraRenderer
     private static Material ErrorMaterial;
 
     /// <summary>
-    /// 绘制 Gizmos
+    /// CommandBuffer 的渲染准备
     /// </summary>
-    private partial void DrawGizmos()
+    private partial void PrepareBuffer()
     {
-        if (Handles.ShouldRenderGizmos())
+        Profiler.BeginSample("Editor Only");
+        // 不同的相机设置不同的 CommandBuffer 名字，以便在 FrameDebugger 区分不同相机的采样
+        _commandBuffer.name = SampleName = _camera.name;
+        Profiler.EndSample();
+    }
+
+    /// <summary>
+    /// Scene 窗口的渲染准备
+    /// </summary>
+    private partial void PrepareForSceneWindow()
+    {
+        if (_camera.cameraType is CameraType.SceneView)
         {
-            _context.DrawGizmos(_camera, GizmoSubset.PreImageEffects);
-            _context.DrawGizmos(_camera, GizmoSubset.PostImageEffects);
+            // 将 UI 显示添加到 Scene 窗口中
+            ScriptableRenderContext.EmitWorldGeometryForSceneView(_camera);
         }
     }
 
@@ -54,5 +67,21 @@ public partial class CameraRenderer
         _context.DrawRenderers(_cullingResults, ref drawingSettings, ref filteringSettings);
     }
 
+    /// <summary>
+    /// 绘制 Gizmos
+    /// </summary>
+    private partial void DrawGizmos()
+    {
+        if (Handles.ShouldRenderGizmos())
+        {
+            _context.DrawGizmos(_camera, GizmoSubset.PreImageEffects);
+            _context.DrawGizmos(_camera, GizmoSubset.PostImageEffects);
+        }
+    }
+#else
+    private partial void PrepareBuffer() { }
+    private partial void PrepareForSceneWindow() { }
+    private partial void DrawUnsupportedShaders() { }
+    private partial void DrawGizmos() { }
 #endif
 }

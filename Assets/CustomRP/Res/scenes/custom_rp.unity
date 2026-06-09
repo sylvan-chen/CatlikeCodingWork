@@ -132,7 +132,7 @@ GameObject:
   - component: {fileID: 378236801}
   - component: {fileID: 378236800}
   m_Layer: 0
-  m_Name: Sphere (4)
+  m_Name: Transparent Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -239,8 +239,8 @@ GameObject:
   - component: {fileID: 524808927}
   - component: {fileID: 524808926}
   - component: {fileID: 524808925}
-  m_Layer: 0
-  m_Name: Sphere
+  m_Layer: 2
+  m_Name: Red Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -348,7 +348,7 @@ GameObject:
   - component: {fileID: 554480427}
   - component: {fileID: 554480426}
   m_Layer: 0
-  m_Name: Cube (5)
+  m_Name: Green Cube Unlit
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -455,8 +455,8 @@ GameObject:
   - component: {fileID: 766985869}
   - component: {fileID: 766985868}
   - component: {fileID: 766985867}
-  m_Layer: 0
-  m_Name: Sphere (5)
+  m_Layer: 2
+  m_Name: Red Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -564,7 +564,7 @@ GameObject:
   - component: {fileID: 826789280}
   - component: {fileID: 826789279}
   m_Layer: 0
-  m_Name: Sphere (1)
+  m_Name: Transparent Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -672,7 +672,7 @@ GameObject:
   - component: {fileID: 843768039}
   - component: {fileID: 843768038}
   m_Layer: 0
-  m_Name: Sphere (7)
+  m_Name: Transparent Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -780,7 +780,7 @@ GameObject:
   - component: {fileID: 895123849}
   - component: {fileID: 895123848}
   m_Layer: 0
-  m_Name: Sphere (6)
+  m_Name: Transparent Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -966,8 +966,8 @@ GameObject:
   - component: {fileID: 1005633932}
   - component: {fileID: 1005633931}
   - component: {fileID: 1005633930}
-  m_Layer: 0
-  m_Name: Cube (6)
+  m_Layer: 2
+  m_Name: Red Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1074,8 +1074,8 @@ GameObject:
   - component: {fileID: 1068515480}
   - component: {fileID: 1068515479}
   - component: {fileID: 1068515478}
-  m_Layer: 0
-  m_Name: Sphere (2)
+  m_Layer: 2
+  m_Name: Red Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1183,7 +1183,7 @@ GameObject:
   - component: {fileID: 1106215580}
   - component: {fileID: 1106215579}
   m_Layer: 0
-  m_Name: Sphere (3)
+  m_Name: Transparent Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1290,8 +1290,8 @@ GameObject:
   - component: {fileID: 1202318092}
   - component: {fileID: 1202318091}
   - component: {fileID: 1202318090}
-  m_Layer: 0
-  m_Name: Sphere (8)
+  m_Layer: 2
+  m_Name: Red Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1399,7 +1399,7 @@ GameObject:
   - component: {fileID: 1262718488}
   - component: {fileID: 1262718487}
   m_Layer: 0
-  m_Name: Cube (7)
+  m_Name: Yellow Cube Unlit
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1530,7 +1530,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -462.1667, y: -210.16666}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 160, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1287854783
@@ -1748,8 +1748,8 @@ GameObject:
   - component: {fileID: 1684001635}
   - component: {fileID: 1684001634}
   - component: {fileID: 1684001633}
-  m_Layer: 0
-  m_Name: Cube (1)
+  m_Layer: 2
+  m_Name: Red Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1857,7 +1857,7 @@ GameObject:
   - component: {fileID: 1729246554}
   - component: {fileID: 1729246553}
   m_Layer: 0
-  m_Name: Cube (2)
+  m_Name: Yellow Cube Unlit
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2044,7 +2044,7 @@ GameObject:
   - component: {fileID: 1808882756}
   - component: {fileID: 1808882755}
   m_Layer: 0
-  m_Name: Cube
+  m_Name: Yellow Cube Unlit
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2139,6 +2139,89 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1868861377
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1868861380}
+  - component: {fileID: 1868861379}
+  m_Layer: 0
+  m_Name: Side Camera
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!20 &1868861379
+Camera:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1868861377}
+  m_Enabled: 1
+  serializedVersion: 2
+  m_ClearFlags: 1
+  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_projectionMatrixMode: 1
+  m_GateFitMode: 2
+  m_FOVAxisMode: 0
+  m_Iso: 200
+  m_ShutterSpeed: 0.005
+  m_Aperture: 16
+  m_FocusDistance: 10
+  m_FocalLength: 50
+  m_BladeCount: 5
+  m_Curvature: {x: 2, y: 11}
+  m_BarrelClipping: 0.25
+  m_Anamorphism: 0
+  m_SensorSize: {x: 36, y: 24}
+  m_LensShift: {x: 0, y: 0}
+  m_NormalizedViewPortRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
+  near clip plane: 0.3
+  far clip plane: 1000
+  field of view: 60
+  orthographic: 0
+  orthographic size: 5
+  m_Depth: 0
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4
+  m_RenderingPath: -1
+  m_TargetTexture: {fileID: 0}
+  m_TargetDisplay: 0
+  m_TargetEye: 3
+  m_HDR: 1
+  m_AllowMSAA: 1
+  m_AllowDynamicResolution: 0
+  m_ForceIntoRT: 0
+  m_OcclusionCulling: 1
+  m_StereoConvergence: 10
+  m_StereoSeparation: 0.022
+--- !u!4 &1868861380
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1868861377}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1, z: -7}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1910282592
 GameObject:
   m_ObjectHideFlags: 0
@@ -2151,8 +2234,8 @@ GameObject:
   - component: {fileID: 1910282595}
   - component: {fileID: 1910282594}
   - component: {fileID: 1910282593}
-  m_Layer: 0
-  m_Name: Cube (3)
+  m_Layer: 2
+  m_Name: Red Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2414,7 +2497,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 51
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -2454,7 +2537,7 @@ GameObject:
   - component: {fileID: 2098410350}
   - component: {fileID: 2098410349}
   m_Layer: 0
-  m_Name: Cube (4)
+  m_Name: Green Cube Unlit
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2554,6 +2637,7 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 1986235314}
+  - {fileID: 1868861380}
   - {fileID: 1577976187}
   - {fileID: 1808882758}
   - {fileID: 1684001636}
