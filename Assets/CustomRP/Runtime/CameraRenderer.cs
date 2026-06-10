@@ -133,7 +133,12 @@ public partial class CameraRenderer
         // 必须清空旧渲染目标以防干扰当前要渲染的图像
         // 如果在 SetupCameraProperties 之前执行，通常会通过内置的 Hidden/InternalClear shader 来绘制一个全屏四边形向 Render Target 写入内容，从而达到清除的效果，这样效率较低，且某些平台可能还无法正确执行。
         // 只有在 SetupCameraProperties 之后执行，才是正常的快速清除 Clear (color+Z+stencil)
-        _commandBuffer.ClearRenderTarget(true, true, Color.clear);
+        CameraClearFlags flags = _camera.clearFlags; // 相机通过 clearFlags 属性控制清除哪些东西
+        _commandBuffer.ClearRenderTarget(
+            flags <= CameraClearFlags.Depth,
+            flags <= CameraClearFlags.Color,
+            flags is CameraClearFlags.Color ? _camera.backgroundColor.linear : Color.clear
+        );
 
         _commandBuffer.BeginSample(SampleName);
         ExecuteBuffer();
