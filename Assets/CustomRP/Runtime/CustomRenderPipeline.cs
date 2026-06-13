@@ -9,6 +9,47 @@ public class CustomRenderPipeline : RenderPipeline
 {
     private readonly CameraRenderer _renderer = new CameraRenderer();
 
+    public CustomRenderPipeline()
+    {
+        // ===== 支持 SRP Batcher =====
+        // SRP Batcher 原理：不是减少 DrawCall，而是简化 DrawCall，把数据分成两类，分别处理：
+        //
+        // ┌─────────────────────────────────────────────────────────┐
+        // │  传统方式 (SetPass Call 开销较大)                          │
+        // │                                                         │
+        // │  每个 DrawCall: [材质属性 + 变换矩阵 + 纹理 + ...] 全部上传   │
+        // │  → 即使材质相同，只是物体不同，也要重新上传一切                 │
+        // └─────────────────────────────────────────────────────────┘
+        //
+        // ┌─────────────────────────────────────────────────────────┐
+        // │  SRP Batcher 方式                                        │
+        // │                                                         │
+        // │  UnityPerMaterial (材质缓冲区):                           │
+        // │  ┌──────────────────────────────────────┐               │
+        // │  │ _BaseColor, _MainTex, ...            │ ← 材质不变就缓存 │
+        // │  │ 只在切换材质时才更新                    │   在 GPU 上不动 │
+        // │  └──────────────────────────────────────┘               │
+        // │                                                         │
+        // │  UnityPerDraw (逐物体缓冲区):                              │
+        // │  ┌──────────────────────────────────────┐               │
+        // │  │ unity_ObjectToWorld, unity_LODFade...│ ← 每个物体都更新 │
+        // │  │ 每个 DrawCall 都快速更新               │   但是数据量很小 │
+        // │  └──────────────────────────────────────┘               │
+        // │                                                         │
+        // │  → 同一材质的多个物体可以快速连续绘制，CPU 开销极低             │
+        // └─────────────────────────────────────────────────────────┘
+        //
+        // 流程：
+        // 1. Unity 按材质排序所有 DrawCall（同材质的放一起）
+        // 2. 第一个物体：上传 UnityPerMaterial（材质属性） + 上传 UnityPerDraw（变换矩阵） → 绘制
+        // 3. 第二个物体（同材质）：UnityPerMaterial 已在 GPU 上不动，只更新 UnityPerDraw → 绘制
+        // 4. 第三个物体（同材质）：同上，只更新 UnityPerDraw → 绘制
+        // 5. 切换材质时：才重新上传新的 UnityPerMaterial
+        //
+        // 性能来源：UnityPerDraw 只有几十个字节（几个矩阵），而传统方式每次要上传几百字节到几 KB 的材质数据。SRP Batcher 把"大而慢"的材质上传变成了"小而快"的逐物体更新。
+        GraphicsSettings.useScriptableRenderPipelineBatching = true;
+    }
+
     protected override void Render(ScriptableRenderContext context, Camera[] cameras) { }
 
     /// <summary>
