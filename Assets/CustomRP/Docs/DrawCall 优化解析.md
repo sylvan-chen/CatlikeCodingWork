@@ -2,14 +2,27 @@
 
 ## DrawCall 数据
 
-DrawCall 就是 CPU 向 GPU 提交一次数据的过程，这个数据可以分成:
+在早期的图形 API（如古老的 OpenGL 2.0 或 DX9）中，如果 CPU 要传数据给 GPU 的 Shader，只能一个变量一个变量地传。比如传一个颜色、传一个浮点数，每次传都要调用一次底层
+API（例如 `glUniform`）。这就像用小轿车送快递，跑一次只能送一件，CPU 极度劳累，带宽利用率极低。
 
-1. **UnityPerMaterial (材质缓冲区)**
-2. **UnityPerDraw (逐物体缓冲区)**
+为了解决这个问题，现代图形 API 引入了常量缓冲区的概念：
+
+- 在 DirectX 中叫 Constant Buffer (`cbuffer`)
+- 在 Vulkan / OpenGL 中叫 Uniform Buffer Object (UBO)
+
+它的本质是：在系统内存中划分一块连续的内存结构（类似 C# 的 Struct），把所有的变量打包塞进去，然后一次性“整车”推送到 GPU
+显存中。Shader 执行时，直接从这块显存里高速读取数据。
 
 ## SPR Batcher
 
-**SRP Batcher 原理**：不是减少 DrawCall，而是简化 DrawCall，把数据分成两类，分别处理：
+**SRP Batcher 原理**：不是减少 DrawCall，而是简化 DrawCall。
+
+SRP Batcher 的核心机制在于它对 cbuffer 进行了“严苛的标准化分类”和“持久化存储”。
+
+SRP Batcher 强制要求 Shader 把变量拆分到两个特定的 cbuffer 块中：
+
+1. **`cbuffer UnityPerMaterial` (材质缓冲区)**：只放材质参数（颜色、粗糙度等）。
+2. **`cbuffer UnityPerObject` (逐物体缓冲区)**：只放物体参数（世界坐标矩阵等）。
 
 ```plaintext
 ┌─────────────────────────────────────────────────────────┐
@@ -47,7 +60,7 @@ DrawCall 就是 CPU 向 GPU 提交一次数据的过程，这个数据可以分�
 5. 切换材质时：才重新上传新的 UnityPerMaterial
 
 **性能来源**：UnityPerDraw 只有几十个字节（几个矩阵），而传统方式每次要上传几百字节到几 KB 的材质数据。SRP Batcher 把"大而慢"
-的材质上传变成了"小而快"的逐物体更新。 
+的材质上传变成了"小而快"的逐物体更新。
 
 ## 三种优化方式的核心区别
 

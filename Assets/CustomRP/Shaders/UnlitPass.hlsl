@@ -50,7 +50,7 @@ float4 UnlitPassFragment(Varyings input) : SV_TARGET
     UNITY_SETUP_INSTANCE_ID(input)
 
     // return _BaseColor;
-    // 支持 GPU Instacing
+    // 支持 GPU Instancing
     return UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseColor);
 }
 
