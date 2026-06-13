@@ -1,5 +1,12 @@
 ﻿# DrawCall 优化解析
 
+## DrawCall 数据
+
+DrawCall 就是 CPU 向 GPU 提交一次数据的过程，这个数据可以分成:
+
+1. **UnityPerMaterial (材质缓冲区)**
+2. **UnityPerDraw (逐物体缓冲区)**
+
 ## SPR Batcher
 
 **SRP Batcher 原理**：不是减少 DrawCall，而是简化 DrawCall，把数据分成两类，分别处理：

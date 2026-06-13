@@ -10,6 +10,7 @@
         Pass
         {
             HLSLPROGRAM
+            #pragma multi_compile_instancing // 支持 GPU Instance 变体
             #pragma vertex UnlitPassVertex
             #pragma fragment UnlitPassFragment
             #include "UnlitPass.hlsl"
