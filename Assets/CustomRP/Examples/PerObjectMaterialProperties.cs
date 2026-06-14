@@ -15,10 +15,14 @@ namespace CustomRP.Examples
         //    - PB 相当于把数据塞进 UnityPerDraw 的 cbuffer 中，破环了统一的 cbuffer 结构，因此会被踢出合批队列。
         //    - 通常 PB 是为了支持 GPU Instancing: 大量同网格的物体，共用同一个材质，GPU Instancing 能打包成一次 DrawCall
         private static int BASE_COLOR_ID = Shader.PropertyToID("_BaseColor");
+        private static int CUTOFF_ID = Shader.PropertyToID("_Cutoff");
+
         private static MaterialPropertyBlock _block;
 
         [SerializeField]
         private Color _baseColor = Color.white;
+        [SerializeField, Range(0f, 1f)]
+        private float _cutoff = 0.5f;
 
         private void Awake()
         {
@@ -30,6 +34,7 @@ namespace CustomRP.Examples
             if (_block == null) _block = new MaterialPropertyBlock();
 
             _block.SetColor(BASE_COLOR_ID, _baseColor);
+            _block.SetFloat(CUTOFF_ID, _cutoff);
             GetComponent<Renderer>().SetPropertyBlock(_block);
         }
     }

@@ -4,6 +4,12 @@
     {
         _BaseMap("Texture", 2D) = "white" {} // 必须以一个空代码块结束纹理属性的定义，该属性很久以前用于控制纹理设置，但如今仍需保留，以避免在某些情况下出现异常错误
         _BaseColor("Color", Color) = (1.0, 1.0, 1.0, 1.0)
+        // Alpha 裁剪
+        // 一种材质通常要么使用透明度混合，要么使用 Alpha 裁剪，不会同时使用两者
+        // 典型的裁剪材质通常使用 AlphaTest 渲染队列 (在所有不透明物体之后渲染)，因为使用了裁剪就无法再假定三角形完全覆盖其后方内容，导致一些 GPU 优化无法实现
+        // Toggle(...) 的参数会添加一个 shader keyword，勾选/不勾选会启用/禁用该 keyword
+        [Toggle(_CLIPPING)] _Clipping ("Alpha Clipping", Float) = 0
+        _Cutoff ("Alpha Cutoff", Range(0.0, 1.0)) = 0.5
         // 混合模式用于支持透明
         // - ScrBlend 代表当前要绘制的内容要使用的混合模式
         // - DstBlend 代表之前绘制的内容要使用的混合模式
@@ -21,6 +27,8 @@
             ZWrite [_ZWrite] // 支持写入深度
 
             HLSLPROGRAM
+            // Unity 不会把一个 shader 编译成一个完整的程序。它会根据 keyword 的开/关组合，编译出多个不同版本的 shader，每个版本叫做一个 变体（variant）
+            #pragma shader_feature _CLIPPING
             #pragma multi_compile_instancing // 支持 GPU Instance 变体
             #pragma vertex UnlitPassVertex
             #pragma fragment UnlitPassFragment
