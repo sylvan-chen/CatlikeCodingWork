@@ -9,8 +9,14 @@ public class CustomRenderPipeline : RenderPipeline
 {
     private readonly CameraRenderer _renderer = new CameraRenderer();
 
-    public CustomRenderPipeline()
+    private bool _useDynamicBatching;
+    private bool _useGPUInstancing;
+
+    public CustomRenderPipeline(bool useDynamicBatching, bool useGPUInstancing, bool useSRPBatcher)
     {
+        _useDynamicBatching = useDynamicBatching;
+        _useGPUInstancing = useGPUInstancing;
+
         // ===== 支持 SRP Batcher =====
         // SRP Batcher 原理：不是减少 DrawCall，而是简化 DrawCall，把数据分成两类，分别处理：
         //
@@ -47,7 +53,7 @@ public class CustomRenderPipeline : RenderPipeline
         // 5. 切换材质时：才重新上传新的 UnityPerMaterial
         //
         // 性能来源：UnityPerDraw 只有几十个字节（几个矩阵），而传统方式每次要上传几百字节到几 KB 的材质数据。SRP Batcher 把"大而慢"的材质上传变成了"小而快"的逐物体更新。
-        GraphicsSettings.useScriptableRenderPipelineBatching = true;
+        GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
     }
 
     protected override void Render(ScriptableRenderContext context, Camera[] cameras) { }
@@ -61,7 +67,7 @@ public class CustomRenderPipeline : RenderPipeline
     {
         for (int i = 0; i < cameras.Count; i++)
         {
-            _renderer.Render(context, cameras[i]);
+            _renderer.Render(context, cameras[i], _useDynamicBatching, _useGPUInstancing);
         }
     }
 }

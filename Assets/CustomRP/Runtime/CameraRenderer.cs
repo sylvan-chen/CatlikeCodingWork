@@ -33,7 +33,7 @@ public partial class CameraRenderer
     /// </summary>
     private CullingResults _cullingResults;
 
-    public void Render(ScriptableRenderContext context, Camera camera)
+    public void Render(ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing)
     {
         _context = context;
         _camera = camera;
@@ -72,7 +72,7 @@ public partial class CameraRenderer
         // 设置属性
         Setup();
         // 绘制所有可见的几何图形
-        DrawVisibleGeometry();
+        DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
 
         // ========== 编辑器的收尾工作 ==========
         // 绘制不支持的 Shader
@@ -147,7 +147,7 @@ public partial class CameraRenderer
     /// <summary>
     /// 绘制几何图形
     /// </summary>
-    private void DrawVisibleGeometry()
+    private void DrawVisibleGeometry(bool useDynamicBatching, bool useGPUInstancing)
     {
         // 绘制渲染器
         // 需要提供: 剔除结果、绘制设置、过滤设置
@@ -165,7 +165,10 @@ public partial class CameraRenderer
             criteria = SortingCriteria.CommonOpaque
         };
         // 绘制设置用于指定支持的 Shader，以及排序设置
-        var drawingSettings = new DrawingSettings(UnlitShaderTagId, sortingSettings);
+        var drawingSettings = new DrawingSettings(UnlitShaderTagId, sortingSettings)
+        {
+            enableDynamicBatching = useDynamicBatching, enableInstancing = useGPUInstancing
+        };
         // 过滤设置用于指定允许的渲染队列
         var filteringSettings = new FilteringSettings(RenderQueueRange.opaque);
 
