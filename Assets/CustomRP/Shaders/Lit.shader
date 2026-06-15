@@ -10,6 +10,11 @@
         // Toggle(...) 的参数会添加一个 shader keyword，勾选/不勾选会启用/禁用该 keyword
         [Toggle(_CLIPPING)] _Clipping ("Alpha Clipping", Float) = 0
         _Cutoff ("Alpha Cutoff", Range(0.0, 1.0)) = 0.5
+        // 表面可以是完全漫反射的、完美镜面的，或是介于两者之间的任何状态。我们有多种方法来控制这一点。
+        // 表面是金属性的还是非金属性的
+        _Metallic ("Metallic", Range(0, 1)) = 0
+        // 表面的光滑程度
+        _Smoothness ("Smoothness", Range(0, 1)) = 0.5
         // 混合模式用于支持透明
         // - ScrBlend 代表当前要绘制的内容要使用的混合模式
         // - DstBlend 代表之前绘制的内容要使用的混合模式

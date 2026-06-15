@@ -29,4 +29,7 @@ float4x4 glstate_matrix_projection;
 float4x4 unity_prev_MatrixM;
 float4x4 unity_prev_MatrixIM;
 
+// 相机的世界坐标
+float3 _WorldSpaceCameraPos;
+
 #endif

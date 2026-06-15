@@ -16,13 +16,19 @@ namespace CustomRP.Examples
         //    - 通常 PB 是为了支持 GPU Instancing: 大量同网格的物体，共用同一个材质，GPU Instancing 能打包成一次 DrawCall
         private static int BASE_COLOR_ID = Shader.PropertyToID("_BaseColor");
         private static int CUTOFF_ID = Shader.PropertyToID("_Cutoff");
+        private static int METALLIC_ID = Shader.PropertyToID("_Metallic");
+        private static int SMOOTHNESS_ID = Shader.PropertyToID("_Smoothness");
 
         private static MaterialPropertyBlock _block;
 
         [SerializeField]
         private Color _baseColor = Color.white;
         [SerializeField, Range(0f, 1f)]
-        private float _cutoff = 0.5f;
+        private float _alphaCutoff = 0.5f;
+        [SerializeField, Range(0f, 1f)]
+        private float _metallic = 0.5f;
+        [SerializeField, Range(0f, 1f)]
+        private float _smoothness = 0.5f;
 
         private void Awake()
         {
@@ -34,7 +40,9 @@ namespace CustomRP.Examples
             if (_block == null) _block = new MaterialPropertyBlock();
 
             _block.SetColor(BASE_COLOR_ID, _baseColor);
-            _block.SetFloat(CUTOFF_ID, _cutoff);
+            _block.SetFloat(CUTOFF_ID, _alphaCutoff);
+            _block.SetFloat(METALLIC_ID, _metallic);
+            _block.SetFloat(SMOOTHNESS_ID, _smoothness);
             GetComponent<Renderer>().SetPropertyBlock(_block);
         }
     }

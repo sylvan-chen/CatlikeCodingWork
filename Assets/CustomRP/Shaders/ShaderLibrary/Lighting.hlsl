@@ -5,25 +5,27 @@
 
 // 反照率 (albedo): 在拉丁语中意为“白色”。它是衡量一个表面漫反射光量的指标。如果反照率并非完全为白色，那么部分光能会被吸收而非反射出去。
 
-// 计算给定表面喝光源的入射光量
+// 计算给定表面光源的入射光量
 float3 IncomingLight(Surface surface, Light light)
 {
     // saturate 限制点积为负是设为零
     return saturate(dot(surface.normal, light.direction) * light.color);
 }
 
-float3 GetLighting(Surface surface, Light light)
+// 计算光照后颜色
+float3 GetLighting(Surface surface, BRDF brdf, Light light)
 {
-    // 将表面颜色作为反照率 (albedo) 来计算
-    return IncomingLight(surface, light) * surface.color;
+    // 入射光乘以 BRDF 结果
+    return IncomingLight(surface, light) * DirectBRDF(surface, brdf, light);
 }
 
-float3 GetLighting(Surface surface)
+// 计算光照后颜色
+float3 GetLighting(Surface surface, BRDF brdf)
 {
     float3 color = 0.0;
     for (int i = 0; i < GetDirectionalLightCount(); i++)
     {
-        color += GetLighting(surface, GetDirectionalLight(i));
+        color += GetLighting(surface, brdf, GetDirectionalLight(i));
     }
     return color;
 }

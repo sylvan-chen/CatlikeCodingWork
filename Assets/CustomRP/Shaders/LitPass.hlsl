@@ -5,6 +5,7 @@
 #include "ShaderLibrary/Common.hlsl"
 #include "ShaderLibrary/Surface.hlsl"
 #include "ShaderLibrary/Light.hlsl"
+#include "ShaderLibrary/BRDF.hlsl"
 #include "ShaderLibrary/Lighting.hlsl"
 
 // 声明纹理和采样器状态
@@ -28,6 +29,8 @@ UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
     UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
     UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
     UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
+    UNITY_DEFINE_INSTANCED_PROP(float, _Metallic)
+    UNITY_DEFINE_INSTANCED_PROP(float, _Smoothness)
 UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 
 
@@ -42,6 +45,7 @@ struct Attributes
 struct Varyings
 {
     float4 positionCS : SV_POSITION;
+    float3 positionWS : VAR_POSITION;
     // 尽管法向量在顶点着色器中是单位长度的，但跨三角形的线性插值会改变其长度。
     // 在 3D 渲染中，模型是由无数个三角形构成的。
     // - 顶点着色器 (Vertex Shader)： 处理三角形的三个顶点。在这里，顶点的法向量（Normal Vector，表示表面朝向的向量）通常被标准化为单位长度（即长度等于 1.0）。
@@ -61,8 +65,8 @@ Varyings LitPassVertex(Attributes input)
     UNITY_SETUP_INSTANCE_ID(input) // 从输入中提取实例索引，并将其存储在其他 Instancing 宏所依赖的全局静态变量中
     UNITY_TRANSFER_INSTANCE_ID(input, output); // 索引存在时，复制索引到 output 中
 
-    float3 positionWS = TransformObjectToWorld(input.positionOS);
-    output.positionCS = TransformWorldToHClip(positionWS);
+    output.positionWS = TransformObjectToWorld(input.positionOS);
+    output.positionCS = TransformWorldToHClip(output.positionWS);
 
     output.normalWS = TransformObjectToWorld(input.normalOS);
 
@@ -86,10 +90,14 @@ float4 LitPassFragment(Varyings input) : SV_TARGET
 
     Surface surface;
     surface.normal = normalize(input.normalWS);
+    surface.viewDirection = normalize(_WorldSpaceCameraPos - input.positionWS);
     surface.color = base.rgb;
     surface.alpha = base.a;
+    surface.metallic = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Metallic);
+    surface.smoothness = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Smoothness);
 
-    float3 color = GetLighting(surface);
+    BRDF brdf = GetBRDF(surface);
+    float3 color = GetLighting(surface, brdf);
     return float4(color, surface.alpha);
 }
 
