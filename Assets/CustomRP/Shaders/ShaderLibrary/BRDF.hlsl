@@ -6,7 +6,8 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
 #include "Surface.hlsl"
 
-// BRDF 方程，用于计算表面反射回来的光线强度，这是漫反射和镜面反射的组合结果。
+// BRDF（双向反射分布函数，Bidirectional Reflectance Distribution Function）是光学和计算机图形学中的核心概念。
+// 它用于描述光线照射到物体表面时，如何从入射方向反射到各个出射方向（漫反射和镜面反射的组合结果）。
 struct BRDF
 {
     float3 diffuse; // 漫反射
@@ -25,7 +26,7 @@ float OneMinusReflectivity(float metallic)
 BRDF GetBRDF(Surface surface, bool applyAlphaToDiffuse = false)
 {
     BRDF brdf;
-    // 漫反射部分为表面颜色
+    // 漫反射部分为表面颜色 * 漫反射率
     brdf.diffuse = surface.color * OneMinusReflectivity(surface.metallic);
     if (applyAlphaToDiffuse)
     {

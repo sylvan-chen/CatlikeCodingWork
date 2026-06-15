@@ -9,7 +9,7 @@
 float3 IncomingLight(Surface surface, Light light)
 {
     // saturate 限制点积为负是设为零
-    return saturate(dot(surface.normal, light.direction) * light.color);
+    return saturate(dot(surface.normal, light.direction)) * light.color;
 }
 
 // 计算光照后颜色

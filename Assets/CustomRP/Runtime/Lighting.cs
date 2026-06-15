@@ -54,7 +54,7 @@ namespace CustomRP
                 }
             }
 
-            _buffer.SetGlobalInt(DIRECTIONAL_LIGHT_COUNT_ID, visibleLights.Length);
+            _buffer.SetGlobalInt(DIRECTIONAL_LIGHT_COUNT_ID, directionalLightCount);
             _buffer.SetGlobalVectorArray(DIRECTIONAL_LIGHT_COLORS_ID, DirectionalLightColors);
             _buffer.SetGlobalVectorArray(DIRECTIONAL_LIGHT_DIRECTIONS_ID, DirectionalLightDirections);
         }
