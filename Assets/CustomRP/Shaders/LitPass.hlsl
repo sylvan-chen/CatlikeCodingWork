@@ -3,6 +3,8 @@
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 #include "SharedLibrary/Common.hlsl"
+#include "SharedLibrary/Surface.hlsl"
+#include "SharedLibrary/Lighting.hlsl"
 
 // 声明纹理和采样器状态
 TEXTURE2D(_BaseMap);
@@ -31,6 +33,7 @@ UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 struct Attributes
 {
     float3 positionOS : POSITION;
+    float3 normalOS : NORMAL;
     float2 baseUV : TEXCOORD0;
     UNITY_VERTEX_INPUT_INSTANCE_ID // GPU Instancing 实例索引
 };
@@ -38,6 +41,14 @@ struct Attributes
 struct Varyings
 {
     float4 positionCS : SV_POSITION;
+    // 尽管法向量在顶点着色器中是单位长度的，但跨三角形的线性插值会改变其长度。
+    // 在 3D 渲染中，模型是由无数个三角形构成的。
+    // - 顶点着色器 (Vertex Shader)： 处理三角形的三个顶点。在这里，顶点的法向量（Normal Vector，表示表面朝向的向量）通常被标准化为单位长度（即长度等于 1.0）。
+    // - 光栅化与插值 (Rasterization & Interpolation)： 当画面传递给片段着色器（Fragment Shader，处理三角形内部的像素）时，系统会根据三个顶点的数据，线性插值计算出三角形内部每一个像素的法线。
+    // 问题就在于“线性插值”。 想象你在一个圆（代表长度为 1）的圆周上有两个点 A 和 B，它们代表两个单位法向量。如果你在这两个点之间画一条直线（线性插值），这条直线上的所有中间点都会落在圆的内部，
+    // 这意味着插值出来的向量长度都小于 1.0。法线方向夹角越大，中间插值结果的长度缩短得就越厉害。
+    // 因此，为了保证物理光照计算的准确性，不要直接使用顶点着色器传过来的法线向量，必须在片段着色器中用 normalize() 对其重新进行归一化处理。
+    float3 normalWS : VAR_NORMAL;
     float2 baseUV : VAR_BASE_UV;
     UNITY_VERTEX_INPUT_INSTANCE_ID // GPU Instancing 实例索引
 };
@@ -51,6 +62,8 @@ Varyings LitPassVertex(Attributes input)
 
     float3 positionWS = TransformObjectToWorld(input.positionOS);
     output.positionCS = TransformWorldToHClip(positionWS);
+
+    output.normalWS = TransformObjectToWorld(input.normalOS);
 
     float4 baseST = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseMap_ST);
     output.baseUV = input.baseUV * baseST;
@@ -69,7 +82,14 @@ float4 LitPassFragment(Varyings input) : SV_TARGET
     #if defined(_CLIPPING)
     clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
     #endif
-    return base;
+
+    Surface surface;
+    surface.normal = normalize(input.normalWS);
+    surface.color = base.rgb;
+    surface.alpha = base.a;
+
+    float3 color = GetLighting(surface);
+    return float4(color, surface.alpha);
 }
 
 

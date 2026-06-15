@@ -23,6 +23,13 @@
     {
         Pass
         {
+            Tags
+            {
+                // 在 Unity 的 Shader 编写中，一个 Shader 可以包含多个 Pass（渲染通道）。比如一个复杂的物体可能需要一个 Pass 画基础颜色，一个 Pass 画阴影，另一个 Pass 画高光轮廓。
+                // 为了让渲染管线能够精确控制“现在去画哪一个 Pass”，Unity 引入了 LightMode 标签。
+                "LightMode" = "CustomLit"
+            }
+
             Blend [_SrcBlend] [_DstBlend] // 支持混合模式 (透明效果)
             ZWrite [_ZWrite] // 支持写入深度
 

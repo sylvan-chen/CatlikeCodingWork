@@ -8,6 +8,7 @@ public partial class CameraRenderer
 {
     private const string BUFFER_NAME = "Render Camera";
     private static readonly ShaderTagId UnlitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
+    private static readonly ShaderTagId LitShaderTagId = new ShaderTagId("CustomLit");
 
     private ScriptableRenderContext _context;
     private Camera _camera;
@@ -165,10 +166,15 @@ public partial class CameraRenderer
             criteria = SortingCriteria.CommonOpaque
         };
         // 绘制设置用于指定支持的 Shader，以及排序设置
+        // DrawSettings 传入的 shaderPassName (TagId) 是告诉 GPU 这次 DrawCall 具体应该去执行 Shader 里的哪一段代码。
+        // 在 Unity 的 Shader 编写中，一个 Shader 可以包含多个 Pass（渲染通道）。比如一个复杂的物体可能需要一个 Pass 画基础颜色，一个 Pass 画阴影，另一个 Pass 画高光轮廓。
+        // 为了让渲染管线能够精确控制“现在去画哪一个 Pass”，Unity 引入了 LightMode 标签。
+        // Shader Pass 没有显式声明 LightMode，Unity 会默认给它分配一个内置的 Tag，名字就叫 "SRPDefaultUnlit"。所以用这个 Tag 就能精准命中那些没有写 LightMode 的无光照 Shader。
         var drawingSettings = new DrawingSettings(UnlitShaderTagId, sortingSettings)
         {
             enableDynamicBatching = useDynamicBatching, enableInstancing = useGPUInstancing
         };
+        drawingSettings.SetShaderPassName(1, LitShaderTagId);
         // 过滤设置用于指定允许的渲染队列
         var filteringSettings = new FilteringSettings(RenderQueueRange.opaque);
 
