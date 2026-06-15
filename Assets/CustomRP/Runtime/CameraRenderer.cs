@@ -14,6 +14,7 @@ namespace CustomRP
 
         private ScriptableRenderContext _context;
         private Camera _camera;
+        private Lighting _lighting = new Lighting();
 
         /// <summary>
         /// 缓冲区的名字
@@ -78,6 +79,7 @@ namespace CustomRP
             if (!Cull()) return;
             // 设置属性
             Setup();
+            _lighting.Setup(context, _cullingResults);
             // 绘制所有可见的几何图形
             DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
 

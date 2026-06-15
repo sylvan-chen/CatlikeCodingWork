@@ -56,6 +56,8 @@ namespace CustomRP
             //
             // 性能来源：UnityPerDraw 只有几十个字节（几个矩阵），而传统方式每次要上传几百字节到几 KB 的材质数据。SRP Batcher 把"大而慢"的材质上传变成了"小而快"的逐物体更新。
             GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
+            // 让光源使用线性空间
+            GraphicsSettings.lightsUseLinearIntensity = true;
         }
 
         protected override void Render(ScriptableRenderContext context, Camera[] cameras) { }
