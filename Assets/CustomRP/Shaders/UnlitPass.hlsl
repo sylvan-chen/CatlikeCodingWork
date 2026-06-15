@@ -2,7 +2,7 @@
 #define CUSTOM_UNLIT_PASS_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
-#include "SharedLibrary/Common.hlsl"
+#include "ShaderLibrary/Common.hlsl"
 
 // 声明纹理和采样器状态
 TEXTURE2D(_BaseMap);

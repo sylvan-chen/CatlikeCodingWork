@@ -1,7 +1,7 @@
 ﻿#ifndef CUSTOM_COMMON_INCLUDED
 #define CUSTOM_COMMON_INCLUDED
 
-#include "SharedLibrary/UnityInput.hlsl"
+#include "ShaderLibrary/UnityInput.hlsl"
 
 // 预先为 SpaceTransforms.hlsl 工具包中的宏做好定义
 #define UNITY_MATRIX_M unity_ObjectToWorld

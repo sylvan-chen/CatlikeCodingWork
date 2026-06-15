@@ -2,9 +2,10 @@
 #define CUSTOM_LIT_PASS_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
-#include "SharedLibrary/Common.hlsl"
-#include "SharedLibrary/Surface.hlsl"
-#include "SharedLibrary/Lighting.hlsl"
+#include "ShaderLibrary/Common.hlsl"
+#include "ShaderLibrary/Surface.hlsl"
+#include "ShaderLibrary/Light.hlsl"
+#include "ShaderLibrary/Lighting.hlsl"
 
 // 声明纹理和采样器状态
 TEXTURE2D(_BaseMap);
