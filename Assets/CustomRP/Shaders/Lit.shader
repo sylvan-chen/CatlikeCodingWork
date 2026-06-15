@@ -34,6 +34,7 @@
             ZWrite [_ZWrite] // 支持写入深度
 
             HLSLPROGRAM
+            #pragma target 3.5 // 只支持 3.5 以上版本
             // Unity 不会把一个 shader 编译成一个完整的程序。它会根据 keyword 的开/关组合，编译出多个不同版本的 shader，每个版本叫做一个 变体（variant）
             #pragma shader_feature _CLIPPING
             #pragma multi_compile_instancing // 支持 GPU Instance 变体
