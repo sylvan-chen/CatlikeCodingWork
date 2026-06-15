@@ -15,7 +15,7 @@ float3 IncomingLight(Surface surface, Light light)
 // 计算光照后颜色
 float3 GetLighting(Surface surface, BRDF brdf, Light light)
 {
-    // 入射光乘以 BRDF 结果
+    // 入射光乘以出射光 (BRDF) 结果
     return IncomingLight(surface, light) * DirectBRDF(surface, brdf, light);
 }
 
