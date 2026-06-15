@@ -15,6 +15,8 @@
         _Metallic ("Metallic", Range(0, 1)) = 0
         // 表面的光滑程度
         _Smoothness ("Smoothness", Range(0, 1)) = 0.5
+        // 漫反射是否预乘透明度
+        [Toggle(_PREMULTIPLY_ALPHA)] _PremulAlpha ("Premultiply Alpha", Float) = 0
         // 混合模式用于支持透明
         // - ScrBlend 代表当前要绘制的内容要使用的混合模式
         // - DstBlend 代表之前绘制的内容要使用的混合模式
@@ -42,6 +44,7 @@
             #pragma target 3.5 // 只支持 3.5 以上版本
             // Unity 不会把一个 shader 编译成一个完整的程序。它会根据 keyword 的开/关组合，编译出多个不同版本的 shader，每个版本叫做一个 变体（variant）
             #pragma shader_feature _CLIPPING
+            #pragma shader_feature _PREMULTIPLY_ALPHA
             #pragma multi_compile_instancing // 支持 GPU Instance 变体
             #pragma vertex LitPassVertex
             #pragma fragment LitPassFragment

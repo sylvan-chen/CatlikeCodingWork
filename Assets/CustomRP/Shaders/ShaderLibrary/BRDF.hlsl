@@ -22,11 +22,16 @@ float OneMinusReflectivity(float metallic)
     return range - metallic * range;
 }
 
-BRDF GetBRDF(Surface surface)
+BRDF GetBRDF(Surface surface, bool applyAlphaToDiffuse = false)
 {
     BRDF brdf;
     // 漫反射部分为表面颜色
     brdf.diffuse = surface.color * OneMinusReflectivity(surface.metallic);
+    if (applyAlphaToDiffuse)
+    {
+        // 预乘透明度混合，保持漫反射根据 alpha 减弱，镜面反射不变，呈现玻璃质感 (在完全透明的玻璃情况下，光线要么直接穿透，要么被反射。镜面反射不会消失)
+        brdf.diffuse *= surface.alpha;
+    }
     // 以一种方式反射的光就无法再以另一种方式反射。这被称为能量守恒，即出射光的量不能超过入射光的量。
     // 这表明镜面反射颜色应等于表面颜色减去漫反射颜色，即 brdf.specular = surface.color - brdf.diffuse;
     // 然而，这忽略了一个事实：金属会影响镜面反射的颜色，而非金属则不会。非金属表面的镜面颜色应为白色，
