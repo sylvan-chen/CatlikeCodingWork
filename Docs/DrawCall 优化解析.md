@@ -1,6 +1,27 @@
 ﻿# DrawCall 优化解析
 
-## DrawCall 数据
+## Command Buffer: DrawCall 命令缓冲
+
+CPU 和 GPU 之间有一个**命令缓冲区** (Command Buffer)，它包含一个命令队列，CPU 每次想要渲染什么，都是往这个缓冲区发出 DrawCall 命令，GPU 则是不断地从缓冲区取出命令以执行。
+
+**为什么需要缓冲指令？**因为 CPU 和 GPU 是异步的、跨总线的。如果每发一条指令就同步一次，开销巨大且会互相等待。把一堆指令攒在 CommandBuffer 里，一次批量提交，就能让 CPU 和 GPU 并行工作。
+
+比如：
+
+```csharp
+_commandBuffer.ClearRenderTarget(...);    // "清屏"
+_commandBuffer.BeginSample(SampleName);   // "开始性能采样"
+// _context.DrawRenderers(...)            // "画这批物体"（这条是直接发给 context 的）
+```
+
+这些调用当下并不执行，只是把指令追加到 `_commandBuffer` 这个队列里。直到：
+
+```csharp
+_context.ExecuteCommandBuffer(_commandBuffer);  // 把队列里的指令交给 context
+_commandBuffer.Clear();                         // 清空队列，准备下一批
+```
+
+## Constant Buffer: DrawCall 数据缓冲
 
 在早期的图形 API（如古老的 OpenGL 2.0 或 DX9）中，如果 CPU 要传数据给 GPU 的 Shader，只能一个变量一个变量地传。比如传一个颜色、传一个浮点数，每次传都要调用一次底层 API（例如 `glUniform`）。这就像用小轿车送快递，跑一次只能送一件，CPU 极度劳累，带宽利用率极低。
 
@@ -11,11 +32,13 @@
 
 它的本质是：在系统内存中划分一块连续的内存结构（类似 C# 的 Struct），把所有的变量打包塞进去，然后一次性“整车”推送到 GPU 显存中。Shader 执行时，直接从这块显存里高速读取数据。
 
+> 命令缓冲区缓冲的是“指令”，常量缓冲区缓冲的是“数据”。
+
 ## SPR Batcher
 
 **SRP Batcher 原理**：不是减少 DrawCall，而是简化 DrawCall。
 
-SRP Batcher 的核心机制在于它对 cbuffer 进行了“严苛的标准化分类”和“持久化存储”。
+SRP Batcher 的核心机制在于它对数据缓冲 cbuffer 进行了“严苛的标准化分类”和“持久化存储”。
 
 SRP Batcher 强制要求 Shader 把变量拆分到两个特定的 cbuffer 块中：
 

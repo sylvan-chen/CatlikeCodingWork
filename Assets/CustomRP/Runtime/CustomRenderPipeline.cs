@@ -13,8 +13,13 @@ namespace CustomRP
 
         private bool _useDynamicBatching;
         private bool _useGPUInstancing;
+        private ShadowSettings _shadowSettings;
 
-        public CustomRenderPipeline(bool useDynamicBatching, bool useGPUInstancing, bool useSRPBatcher)
+        public CustomRenderPipeline(
+            bool useDynamicBatching,
+            bool useGPUInstancing,
+            bool useSRPBatcher,
+            ShadowSettings shadowSettings)
         {
             _useDynamicBatching = useDynamicBatching;
             _useGPUInstancing = useGPUInstancing;
@@ -58,6 +63,9 @@ namespace CustomRP
             GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
             // 让光源使用线性空间
             GraphicsSettings.lightsUseLinearIntensity = true;
+
+            // 阴影设置
+            _shadowSettings = shadowSettings;
         }
 
         protected override void Render(ScriptableRenderContext context, Camera[] cameras) { }
@@ -71,7 +79,7 @@ namespace CustomRP
         {
             for (int i = 0; i < cameras.Count; i++)
             {
-                _renderer.Render(context, cameras[i], _useDynamicBatching, _useGPUInstancing);
+                _renderer.Render(context, cameras[i], _useDynamicBatching, _useGPUInstancing, _shadowSettings);
             }
         }
     }

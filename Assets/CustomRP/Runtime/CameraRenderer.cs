@@ -9,39 +9,39 @@ namespace CustomRP
     public partial class CameraRenderer
     {
         private const string BUFFER_NAME = "Render Camera";
+#if UNITY_EDITOR
+        /// <summary> 采样区名字：在编辑器下，我们在 PrepareBuffer() 中为不同相机设置不同的采样区名字，以便在 FrameDebugger 区分 </summary>
+        private string SampleName { get; set; }
+#else
+        /// <summary> 采样区名字：直接用命令缓冲区名字 </summary>
+        private const string SampleName = BUFFER_NAME;
+#endif
+
         private static readonly ShaderTagId UnlitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
         private static readonly ShaderTagId LitShaderTagId = new ShaderTagId("CustomLit");
 
-        private ScriptableRenderContext _context;
+        /// <summary> 目标相机 </summary>
         private Camera _camera;
-        private Lighting _lighting = new Lighting();
-
-        /// <summary>
-        /// 缓冲区的名字
-        /// 在编辑器下，我们在 PrepareBuffer() 中为不同相机设置不同的采样区名字，以便在 FrameDebugger 区分
-        /// </summary>
-#if UNITY_EDITOR
-        private string SampleName { get; set; }
-#else
-    private const string SampleName = BUFFER_NAME;
-#endif
-
-        /// <summary>
-        /// 一些指令可以通过专有命令直接执行（比如绘制天空盒），但其他命令必须通过 CommandBuffer 间接发出。
-        /// 我们可以在适当的位置调用 `BeginSample` 和 `EndSample` 来注入 Profiler
-        /// </summary>
-        private readonly CommandBuffer _commandBuffer = new CommandBuffer { name = BUFFER_NAME };
-
-        /// <summary>
-        /// 剔除结果
-        /// </summary>
+        /// <summary> 渲染上下文 </summary>
+        private ScriptableRenderContext _context;
+        /// <summary> 剔除结果 </summary>
         private CullingResults _cullingResults;
+
+        /// <summary>
+        /// 命令缓冲区：
+        /// 一些指令可以通过专有命令直接执行（比如绘制天空盒），但其他命令必须通过 CommandBuffer 间接发出。
+        /// 我们可以在适当的位置调用 `BeginSample` 和 `EndSample` 来注入 Profiler。
+        /// </summary>
+        private readonly CommandBuffer _commandBuffer = new() { name = BUFFER_NAME };
+        /// <summary> 光照 </summary>
+        private readonly Lighting _lighting = new();
 
         public void Render(
             ScriptableRenderContext context,
             Camera camera,
             bool useDynamicBatching,
-            bool useGPUInstancing)
+            bool useGPUInstancing,
+            ShadowSettings shadowSettings)
         {
             _context = context;
             _camera = camera;
@@ -76,10 +76,10 @@ namespace CustomRP
 
             // ========== 游戏画面渲染 ==========
             // 先进行剔除
-            if (!Cull()) return;
+            if (!Cull(shadowSettings.MaxDistance)) return;
             // 设置属性
             Setup();
-            _lighting.Setup(context, _cullingResults);
+            _lighting.Setup(context, _cullingResults, shadowSettings);
             // 绘制所有可见的几何图形
             DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
 
@@ -98,10 +98,12 @@ namespace CustomRP
         /// 剔除操作<br/>
         /// 我们不会一股脑渲染所有物体，而是只渲染相机可见的哪些。具体做法是先找出场景中所有带有渲染器组件的物体，然后剔除掉那些位于相机视锥体外的物体。
         /// </summary>
-        private bool Cull()
+        private bool Cull(float maxShadowDistance)
         {
             if (_camera.TryGetCullingParameters(out ScriptableCullingParameters p))
             {
+                // 最后的阴影距离取最大阴影距离与相机远裁剪平面的最小值
+                p.shadowDistance = Mathf.Min(maxShadowDistance, _camera.farClipPlane);
                 _cullingResults = _context.Cull(ref p);
                 return true;
             }

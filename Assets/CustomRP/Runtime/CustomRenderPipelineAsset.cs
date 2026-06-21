@@ -16,9 +16,12 @@ namespace CustomRP
         [SerializeField]
         private bool _useSRPBatcher = true;
 
+        [SerializeField]
+        private ShadowSettings _shadows = null;
+
         protected override RenderPipeline CreatePipeline()
         {
-            return new CustomRenderPipeline(_useDynamicBatching, _useGPUInstancing, _useSRPBatcher);
+            return new CustomRenderPipeline(_useDynamicBatching, _useGPUInstancing, _useSRPBatcher, _shadows);
         }
     }
 }
