@@ -51,6 +51,26 @@
             #include "LitPass.hlsl"
             ENDHLSL
         }
+
+        Pass
+        {
+            Tags
+            {
+                "LightMode" = "ShadowCaster"
+            }
+
+            // 只需写入深度，禁用颜色数据的写入
+            ColorMask 0
+
+            HLSLPROGRAM
+            #pragma target 3.5 // 只支持 3.5 以上版本
+            #pragma shader_feature _CLIPPING
+            #pragma multi_compile_instancing // 支持 GPU Instance 变体
+            #pragma vertex ShadowPassVertex
+            #pragma fragment ShadowPassFragment
+            #include "ShadowCasterPass.hlsl"
+            ENDHLSL
+        }
     }
 
     CustomEditor "CustomRP.Editor.CustomShaderGUI"

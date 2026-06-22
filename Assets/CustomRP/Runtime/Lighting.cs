@@ -45,6 +45,11 @@ namespace CustomRP
             ExecuteBuffer();
         }
 
+        public void Cleanup()
+        {
+            _shadows.Cleanup();
+        }
+
         private void SetupLights()
         {
             // 从剔除结果获取所有可见光

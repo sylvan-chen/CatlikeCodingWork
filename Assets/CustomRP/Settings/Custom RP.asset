@@ -12,3 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8a82e74d2ce4353409aff7b135c5f70f, type: 3}
   m_Name: Custom RP
   m_EditorClassIdentifier: 
+  _useDynamicBatching: 0
+  _useGPUInstancing: 1
+  _useSRPBatcher: 1
+  _shadows:
+    _maxDistance: 20
+    _directional:
+      AtlasSize: 1024

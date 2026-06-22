@@ -77,9 +77,14 @@ namespace CustomRP
             // ========== 游戏画面渲染 ==========
             // 先进行剔除
             if (!Cull(shadowSettings.MaxDistance)) return;
-            // 设置属性
-            Setup();
+            // 设置光照
+            // 先渲染阴影，保证常规渲染不会受到影响
+            _commandBuffer.BeginSample(SampleName);
+            ExecuteBuffer();
             _lighting.Setup(context, _cullingResults, shadowSettings);
+            _commandBuffer.EndSample(SampleName);
+            // 设置相机
+            Setup();
             // 绘制所有可见的几何图形
             DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
 
@@ -88,6 +93,8 @@ namespace CustomRP
             DrawUnsupportedShaders();
             // 绘制 Gizmos
             DrawGizmos();
+            // 清理光照
+            _lighting.Cleanup();
 
             // ========== 提交 ==========
             // 我们必须在上下文上调用 Submit 来提交排队的工作以执行
@@ -111,7 +118,7 @@ namespace CustomRP
         }
 
         /// <summary>
-        /// 设置属性
+        /// 设置相机
         /// </summary>
         private void Setup()
         {
@@ -131,13 +138,13 @@ namespace CustomRP
             // - `_ZBufferParams`：用于将深度图（Depth Texture）中的非线性深度值转换为线性深度的数学参数。
             // - `_ProjectionParams`：包含相机的 Near Clip Plane 和 Far Clip Plane，以及是否翻转了投影矩阵（如在某些平台的 RenderTexture 渲染时）。
             //
-            // 3.  设置当前的 Render Target (渲染目标)
+            // 3. 设置当前上下文的 Render Target (渲染目标)
             // 调用此方法时，Unity 会隐式地将图形 API 的 Render Target 绑定到该相机的目标上。
             // - 如果相机的 `Target Texture` 为空，它会将渲染目标指向屏幕后备缓冲区 (Backbuffer)。
             // - 如果相机挂载了 RenderTexture，它会自动将渲染目标切换到该 RenderTexture 的 Color Buffer 和 Depth Buffer。
             //
             // 关键细节:
-            // 必须在执行任何 `CommandBuffer.ClearRenderTarget` 或 `context.DrawRenderers` 之前调用 `SetupCameraProperties`。
+            // 必须在执行任何 `_commandBuffer.ClearRenderTarget` 或 `_context.DrawRenderers` 之前调用 `_context.SetupCameraProperties`。
             // 如果你先 Clear 了屏幕，然后再 SetupCameraProperties，在某些平台（尤其是使用了基于图块延迟渲染 Tile-Based Deferred Rendering 的移动端设备）上，可能会导致 Clear 指令被覆盖或渲染错乱。
             _context.SetupCameraProperties(_camera);
 
