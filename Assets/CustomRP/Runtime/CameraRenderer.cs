@@ -77,12 +77,14 @@ namespace CustomRP
             // ========== 游戏画面渲染 ==========
             // 先进行剔除
             if (!Cull(shadowSettings.MaxDistance)) return;
-            // 设置光照
-            // 先渲染阴影，保证常规渲染不会受到影响
+
             _commandBuffer.BeginSample(SampleName);
             ExecuteBuffer();
+            // 设置光照
+            // 设置光照的同时会把阴影绘制到一张阴影贴图（Shadow Map）中
             _lighting.Setup(context, _cullingResults, shadowSettings);
             _commandBuffer.EndSample(SampleName);
+
             // 设置相机
             Setup();
             // 绘制所有可见的几何图形

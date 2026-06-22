@@ -56,6 +56,7 @@
         {
             Tags
             {
+                // 画阴影（调用 _context.DrawShadows）时，只会挑这个 LightMode 的 Pass 来画
                 "LightMode" = "ShadowCaster"
             }
 

@@ -16,9 +16,11 @@ namespace CustomRP
         private static int DIRECTIONAL_LIGHT_COUNT_ID = Shader.PropertyToID("_DirectionalLightCount");
         private static int DIRECTIONAL_LIGHT_COLORS_ID = Shader.PropertyToID("_DirectionalLightColors");
         private static int DIRECTIONAL_LIGHT_DIRECTIONS_ID = Shader.PropertyToID("_DirectionalLightDirections");
+        private static int DIRECTIONAL_LIGHT_SHADOW_DATA_ID = Shader.PropertyToID("_DirectionalLightShadowData");
 
         private static Vector4[] DirectionalLightColors = new Vector4[MAX_DIRECTIONAL_LIGHT_COUNT];
         private static Vector4[] DirectionalLightDirections = new Vector4[MAX_DIRECTIONAL_LIGHT_COUNT];
+        private static Vector4[] DirectionalLightShadowData = new Vector4[MAX_DIRECTIONAL_LIGHT_COUNT];
 
         /// <summary> 渲染上下文 </summary>
         private ScriptableRenderContext _context;
@@ -37,6 +39,7 @@ namespace CustomRP
             _cullingResults = cullingResults;
 
             _buffer.BeginSample(BUFFER_NAME);
+            // 配置光源的同时就先把阴影贴图画好
             _shadows.Setup(context, cullingResults, shadowSettings);
             SetupLights();
             _shadows.Render();
@@ -70,6 +73,7 @@ namespace CustomRP
             _buffer.SetGlobalInt(DIRECTIONAL_LIGHT_COUNT_ID, directionalLightCount);
             _buffer.SetGlobalVectorArray(DIRECTIONAL_LIGHT_COLORS_ID, DirectionalLightColors);
             _buffer.SetGlobalVectorArray(DIRECTIONAL_LIGHT_DIRECTIONS_ID, DirectionalLightDirections);
+            _buffer.SetGlobalVectorArray(DIRECTIONAL_LIGHT_SHADOW_DATA_ID, DirectionalLightShadowData);
         }
 
         private void SetupDirectionalLight(int index, ref VisibleLight visibleLight)
@@ -78,8 +82,8 @@ namespace CustomRP
             DirectionalLightColors[index] = visibleLight.finalColor;
             // 前向向量可通过 VisibleLight.localToWorldMatrix 属性获取，它是矩阵的第三列
             DirectionalLightDirections[index] = -visibleLight.localToWorldMatrix.GetColumn(2);
-            // 预留可见光的阴影
-            _shadows.ReserveDirectionalShadows(visibleLight.light, index);
+            // 登记这盏光的阴影
+            DirectionalLightShadowData[index] = _shadows.ReserveDirectionalShadows(visibleLight.light, index);
         }
 
         private void ExecuteBuffer()
