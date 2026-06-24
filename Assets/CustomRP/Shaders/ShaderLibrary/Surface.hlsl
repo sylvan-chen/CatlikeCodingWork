@@ -6,6 +6,7 @@
 // 我们会在多个地方使用这些数据，因此我们来定义一个便捷的 Surface 结构体来包含所有相关数据。
 struct Surface
 {
+    float3 position;
     float3 normal;
     float3 viewDirection;
     float3 color;
