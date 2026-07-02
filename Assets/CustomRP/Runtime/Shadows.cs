@@ -205,14 +205,10 @@ namespace CustomRP
             matrix.m01 = (0.5f * (matrix.m01 + matrix.m31) + offset.x * matrix.m31) * scale;
             matrix.m02 = (0.5f * (matrix.m02 + matrix.m32) + offset.x * matrix.m32) * scale;
             matrix.m03 = (0.5f * (matrix.m03 + matrix.m33) + offset.x * matrix.m33) * scale;
-            matrix.m10 = (0.5f * (matrix.m10 + matrix.m30) + offset.x * matrix.m30) * scale;
-            matrix.m11 = (0.5f * (matrix.m11 + matrix.m31) + offset.x * matrix.m31) * scale;
-            matrix.m12 = (0.5f * (matrix.m12 + matrix.m32) + offset.x * matrix.m32) * scale;
-            matrix.m13 = (0.5f * (matrix.m13 + matrix.m33) + offset.x * matrix.m33) * scale;
-            matrix.m20 = (0.5f * (matrix.m20 + matrix.m30) + offset.x * matrix.m30) * scale;
-            matrix.m21 = (0.5f * (matrix.m21 + matrix.m31) + offset.x * matrix.m31) * scale;
-            matrix.m22 = (0.5f * (matrix.m22 + matrix.m32) + offset.x * matrix.m32) * scale;
-            matrix.m23 = (0.5f * (matrix.m23 + matrix.m33) + offset.x * matrix.m33) * scale;
+            matrix.m10 = (0.5f * (matrix.m10 + matrix.m30) + offset.y * matrix.m30) * scale;
+            matrix.m11 = (0.5f * (matrix.m11 + matrix.m31) + offset.y * matrix.m31) * scale;
+            matrix.m12 = (0.5f * (matrix.m12 + matrix.m32) + offset.y * matrix.m32) * scale;
+            matrix.m13 = (0.5f * (matrix.m13 + matrix.m33) + offset.y * matrix.m33) * scale;
             return matrix;
         }
 
