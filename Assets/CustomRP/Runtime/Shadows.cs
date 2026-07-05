@@ -31,14 +31,16 @@ namespace CustomRP
 
         private const string BUFFER_NAME = "Shadows";
 
+        /// <summary> 最大启用阴影的方向光数量 </summary>
+        private const int MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT = 4;
+        /// <summary> 最大级联数量 </summary>
+        private const int MAX_CASCADES = 4;
+
         private static readonly int DIRECTIONAL_SHADOW_ATLAS_ID = Shader.PropertyToID("_DirectionalShadowAtlas");
         private static readonly int DIRECTIONAL_SHADOW_MATRICES_ID = Shader.PropertyToID("_DirectionalShadowMatrices");
 
         private static readonly Matrix4x4[] DirectionalShadowMatrices =
-            new Matrix4x4[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT];
-
-        /// <summary> 最大启用阴影的方向光数量 </summary>
-        private const int MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT = 4;
+            new Matrix4x4[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADES];
 
         /// <summary> 渲染上下文 </summary>
         private ScriptableRenderContext _context;
@@ -90,7 +92,10 @@ namespace CustomRP
                     VisibleLightIndex = visibleLightIndex,
                 };
 
-                return new Vector2(light.shadowStrength, _shadowedDirectionalLightCount++);
+                return new Vector2(
+                    light.shadowStrength,
+                    _settings.Directional.CascadeCount * _shadowedDirectionalLightCount++
+                );
             }
 
             return Vector2.zero;
@@ -144,8 +149,25 @@ namespace CustomRP
             _buffer.BeginSample(BUFFER_NAME);
             ExecuteBuffer();
 
-            // 按照光源数量拆分图块，吧多盏光的 Shadow Map 拼进一张纹理，省去切换纹理的开销
-            int split = _shadowedDirectionalLightCount <= 1 ? 1 : 2; // 大于 1 的时候切成 2x2 共 4 个 tile，每盏光一个
+            // 按照光源数量和级联数量拆分图块，把多盏光的 Shadow Map 拼进一张纹理，省去切换纹理的开销
+            int tiles = _settings.Directional.CascadeCount * _shadowedDirectionalLightCount; // 每盏光占用级联数量的 tile * 总共的光数量
+            // split 代表每条边要切分的数量，总块数为 split * split
+            int split;
+            if (tiles <= 1)
+            {
+                // 只有 1 盏光、1 层级联，不用切分
+                split = 1;
+            }
+            else if (tiles <= 4)
+            {
+                // 4 个 tiles 以内，切成 2x2=4 块
+                split = 2;
+            }
+            else
+            {
+                // 最多切成 4x4=16 块
+                split = 4;
+            }
             int tileSize = atlasSize / split;
 
             for (int i = 0; i < _shadowedDirectionalLightCount; i++)
@@ -209,6 +231,10 @@ namespace CustomRP
             matrix.m11 = (0.5f * (matrix.m11 + matrix.m31) + offset.y * matrix.m31) * scale;
             matrix.m12 = (0.5f * (matrix.m12 + matrix.m32) + offset.y * matrix.m32) * scale;
             matrix.m13 = (0.5f * (matrix.m13 + matrix.m33) + offset.y * matrix.m33) * scale;
+            matrix.m20 = 0.5f * (matrix.m20 + matrix.m30);
+            matrix.m21 = 0.5f * (matrix.m21 + matrix.m31);
+            matrix.m22 = 0.5f * (matrix.m22 + matrix.m32);
+            matrix.m23 = 0.5f * (matrix.m23 + matrix.m33);
             return matrix;
         }
 

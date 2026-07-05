@@ -2,6 +2,7 @@
 #define CUSTOM_SHADOWS_INCLUDED
 
 #define MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT 4
+#define MAX_CASCADES_COUNT 4
 
 // 阴影贴图 (shadow map) 的采样用 TEXTURE2D_SHADOW，采样器用 SAMPLER_CMP
 TEXTURE2D_SHADOW(_DirectionalShadowAtlas);
@@ -9,7 +10,7 @@ TEXTURE2D_SHADOW(_DirectionalShadowAtlas);
 SAMPLER_CMP(SHADOW_SAMPLER);
 
 CBUFFER_START(_CustomShadows)
-    float4x4 _DirectionalShadowMatrices[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT];
+    float4x4 _DirectionalShadowMatrices[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADES_COUNT];
 CBUFFER_END
 
 struct DirectionalShadowData

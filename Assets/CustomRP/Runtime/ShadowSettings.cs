@@ -24,13 +24,31 @@ namespace CustomRP
         public struct DirectionalShadow
         {
             public MapSize AtlasSize;
+            [Range(1, 4)]
+            [Tooltip("级联数量，每个方向光最多支持 4 个级联")]
+            public int CascadeCount;
+            [Range(0f, 1f)]
+            public float CascadeRatio1;
+            [Range(0f, 1f)]
+            public float CascadeRatio2;
+            [Range(0f, 1f)]
+            public float CascadeRatio3;
+
+            public Vector3 CascadeRatios => new Vector3(CascadeRatio1, CascadeRatio2, CascadeRatio3);
         }
 
         [SerializeField, Min(0f)]
         private float _maxDistance = 100f;
 
         [SerializeField]
-        private DirectionalShadow _directional = new() { AtlasSize = MapSize._1024 };
+        private DirectionalShadow _directional = new()
+        {
+            AtlasSize = MapSize._1024,
+            CascadeCount = 4,
+            CascadeRatio1 = 0.1f,
+            CascadeRatio2 = 0.25f,
+            CascadeRatio3 = 0.5f,
+        };
 
         public float MaxDistance => _maxDistance;
         public DirectionalShadow Directional => _directional;
