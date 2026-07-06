@@ -5,22 +5,31 @@ using UnityEngine.Rendering;
 namespace CustomRP
 {
     /// <summary>
-    /// 专门用于处理光照
+    /// 光照渲染处理
     /// </summary>
     public class Lighting
     {
-        /// <summary> 最大支持的方向光数量 </summary>
+        private const string BUFFER_NAME = "Lighting";
+
+        // ============================== 方向光相关配置 ==============================
+
+        /// <summary> 最大方向光数量 </summary>
         private const int MAX_DIRECTIONAL_LIGHT_COUNT = 4;
 
-        private const string BUFFER_NAME = "Lighting";
-        private static int DIRECTIONAL_LIGHT_COUNT_ID = Shader.PropertyToID("_DirectionalLightCount");
-        private static int DIRECTIONAL_LIGHT_COLORS_ID = Shader.PropertyToID("_DirectionalLightColors");
-        private static int DIRECTIONAL_LIGHT_DIRECTIONS_ID = Shader.PropertyToID("_DirectionalLightDirections");
-        private static int DIRECTIONAL_LIGHT_SHADOW_DATA_ID = Shader.PropertyToID("_DirectionalLightShadowData");
+        /// <summary> 方向光数量 </summary>
+        private static readonly int DirectionalLightCountId = Shader.PropertyToID("_DirectionalLightCount");
+        /// <summary> 方向光颜色 </summary>
+        private static readonly int DirectionalLightColorsId = Shader.PropertyToID("_DirectionalLightColors");
+        /// <summary> 方向光方向 </summary>
+        private static readonly int DirectionalLightDirectionsId = Shader.PropertyToID("_DirectionalLightDirections");
+        /// <summary> 方向光阴影数据 </summary>
+        private static readonly int DirectionalLightShadowDataId = Shader.PropertyToID("_DirectionalLightShadowData");
 
         private static Vector4[] DirectionalLightColors = new Vector4[MAX_DIRECTIONAL_LIGHT_COUNT];
         private static Vector4[] DirectionalLightDirections = new Vector4[MAX_DIRECTIONAL_LIGHT_COUNT];
         private static Vector4[] DirectionalLightShadowData = new Vector4[MAX_DIRECTIONAL_LIGHT_COUNT];
+
+        // ==========================================================================
 
         /// <summary> 渲染上下文 </summary>
         private ScriptableRenderContext _context;
@@ -39,9 +48,11 @@ namespace CustomRP
             _cullingResults = cullingResults;
 
             _buffer.BeginSample(BUFFER_NAME);
-            // 配置光源的同时就先把阴影贴图画好
+            // 配置阴影
             _shadows.Setup(context, cullingResults, shadowSettings);
+            // 配置光照
             SetupLights();
+            // 绘制阴影
             _shadows.Render();
             _buffer.EndSample(BUFFER_NAME);
 
@@ -58,22 +69,25 @@ namespace CustomRP
             // 从剔除结果获取所有可见光
             NativeArray<VisibleLight> visibleLights = _cullingResults.visibleLights;
 
-            // 处理方向光
             int directionalLightCount = 0;
+
             for (int i = 0; i < visibleLights.Length; i++)
             {
                 VisibleLight visibleLight = visibleLights[i];
-                if (visibleLight.lightType == LightType.Directional)
+
+                // --- 方向光 ---
+                if (visibleLight.lightType is LightType.Directional)
                 {
                     SetupDirectionalLight(directionalLightCount++, ref visibleLight);
                     if (directionalLightCount >= MAX_DIRECTIONAL_LIGHT_COUNT) break;
                 }
             }
 
-            _buffer.SetGlobalInt(DIRECTIONAL_LIGHT_COUNT_ID, directionalLightCount);
-            _buffer.SetGlobalVectorArray(DIRECTIONAL_LIGHT_COLORS_ID, DirectionalLightColors);
-            _buffer.SetGlobalVectorArray(DIRECTIONAL_LIGHT_DIRECTIONS_ID, DirectionalLightDirections);
-            _buffer.SetGlobalVectorArray(DIRECTIONAL_LIGHT_SHADOW_DATA_ID, DirectionalLightShadowData);
+            // --- 方向光 ---
+            _buffer.SetGlobalInt(DirectionalLightCountId, directionalLightCount);
+            _buffer.SetGlobalVectorArray(DirectionalLightColorsId, DirectionalLightColors);
+            _buffer.SetGlobalVectorArray(DirectionalLightDirectionsId, DirectionalLightDirections);
+            _buffer.SetGlobalVectorArray(DirectionalLightShadowDataId, DirectionalLightShadowData);
         }
 
         private void SetupDirectionalLight(int index, ref VisibleLight visibleLight)
@@ -82,7 +96,7 @@ namespace CustomRP
             DirectionalLightColors[index] = visibleLight.finalColor;
             // 前向向量可通过 VisibleLight.localToWorldMatrix 属性获取，它是矩阵的第三列
             DirectionalLightDirections[index] = -visibleLight.localToWorldMatrix.GetColumn(2);
-            // 登记这盏光的阴影
+            // 登记这盏光的阴影数据
             DirectionalLightShadowData[index] = _shadows.ReserveDirectionalShadows(visibleLight.light, index);
         }
 

@@ -19,7 +19,7 @@ namespace CustomRP
             _8192 = 8192,
         }
 
-        /// <summary> 方向阴影 </summary>
+        /// <summary> 方向阴影设置 </summary>
         [Serializable]
         public struct DirectionalShadow
         {
@@ -38,9 +38,11 @@ namespace CustomRP
         }
 
         [SerializeField, Min(0f)]
+        [Tooltip("阴影最大距离")]
         private float _maxDistance = 100f;
 
         [SerializeField]
+        [Tooltip("方向阴影设置")]
         private DirectionalShadow _directional = new()
         {
             AtlasSize = MapSize._1024,

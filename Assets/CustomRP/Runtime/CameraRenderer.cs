@@ -75,18 +75,19 @@ namespace CustomRP
             PrepareForSceneWindow();
 
             // ========== 游戏画面渲染 ==========
+            // 剔除 (-> 配置阴影) -> 配置光照 (-> 绘制阴影) -> 配置相机 -> 绘制几何图形
+
             // 先进行剔除
             if (!Cull(shadowSettings.MaxDistance)) return;
 
             _commandBuffer.BeginSample(SampleName);
             ExecuteBuffer();
-            // 设置光照
-            // 设置光照的同时会把阴影绘制到一张阴影贴图（Shadow Map）中
+            // 配置光照
             _lighting.Setup(context, _cullingResults, shadowSettings);
             _commandBuffer.EndSample(SampleName);
 
-            // 设置相机
-            Setup();
+            // 配置相机
+            SetupCamera();
             // 绘制所有可见的几何图形
             DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
 
@@ -111,7 +112,7 @@ namespace CustomRP
         {
             if (_camera.TryGetCullingParameters(out ScriptableCullingParameters p))
             {
-                // 最后的阴影距离取最大阴影距离与相机远裁剪平面的最小值
+                // 最终阴影距离取最大阴影距离与相机远裁剪平面的最小值
                 p.shadowDistance = Mathf.Min(maxShadowDistance, _camera.farClipPlane);
                 _cullingResults = _context.Cull(ref p);
                 return true;
@@ -120,9 +121,9 @@ namespace CustomRP
         }
 
         /// <summary>
-        /// 设置相机
+        /// 配置相机
         /// </summary>
-        private void Setup()
+        private void SetupCamera()
         {
             // context.SetupCameraProperties(camera) 扮演着“搭建桥梁”的角色。
             // 它的核心作用是将相机的 C# 属性转换为 GPU（Shader）可以理解的全局变量，并配置基础渲染目标。

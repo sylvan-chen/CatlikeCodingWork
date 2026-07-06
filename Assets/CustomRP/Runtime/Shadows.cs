@@ -22,8 +22,12 @@ namespace CustomRP
     // - 聚光灯阴影：聚光灯用透视投影。
     // - 点光源阴影：点光源用六面立方体贴图（cubemap）。
 
+    /// <summary>
+    /// 阴影渲染处理
+    /// </summary>
     public class Shadows
     {
+        /// <summary> 应用阴影的方向光 </summary>
         public struct ShadowedDirectionalLight
         {
             public int VisibleLightIndex;
@@ -31,19 +35,25 @@ namespace CustomRP
 
         private const string BUFFER_NAME = "Shadows";
 
-        /// <summary> 最大启用阴影的方向光数量 </summary>
+        /// <summary> 应用阴影的方向光的最大数量 </summary>
         private const int MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT = 4;
         /// <summary> 最大级联数量 </summary>
-        private const int MAX_CASCADES = 4;
+        private const int MAX_CASCADES_COUNT = 4;
 
-        private static readonly int DIRECTIONAL_SHADOW_ATLAS_ID = Shader.PropertyToID("_DirectionalShadowAtlas");
-        private static readonly int DIRECTIONAL_SHADOW_MATRICES_ID = Shader.PropertyToID("_DirectionalShadowMatrices");
-        private static readonly int CASCADE_COUNT_ID = Shader.PropertyToID("_CascadeCount");
-        private static readonly int CASCADE_CULLING_SPHERES_ID = Shader.PropertyToID("_CascadeCullingSpheres");
+        /// <summary> 方向阴影图集 </summary>
+        private static readonly int DirectionalShadowAtlasId = Shader.PropertyToID("_DirectionalShadowAtlas");
+        /// <summary> 方向阴影矩阵 </summary>
+        private static readonly int DirectionalShadowMatricesId = Shader.PropertyToID("_DirectionalShadowMatrices");
+        /// <summary> 阴影级联数量 </summary>
+        private static readonly int CascadeCountId = Shader.PropertyToID("_CascadeCount");
+        /// <summary> 级联剔除球 </summary>
+        private static readonly int CascadeCullingSpheresId = Shader.PropertyToID("_CascadeCullingSpheres");
 
+        private readonly ShadowedDirectionalLight[] ShadowedDirectionalLights =
+            new ShadowedDirectionalLight[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT];
         private static readonly Matrix4x4[] DirectionalShadowMatrices =
-            new Matrix4x4[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADES];
-        private static readonly Vector4[] CascadeCullingSpheres = new Vector4[MAX_CASCADES];
+            new Matrix4x4[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADES_COUNT];
+        private static readonly Vector4[] CascadeCullingSpheres = new Vector4[MAX_CASCADES_COUNT];
 
         /// <summary> 渲染上下文 </summary>
         private ScriptableRenderContext _context;
@@ -52,13 +62,11 @@ namespace CustomRP
 
         /// <summary> 命令缓冲区 </summary>
         private readonly CommandBuffer _buffer = new() { name = BUFFER_NAME };
-        /// <summary> 启用阴影的方向光列表 </summary>
-        private readonly ShadowedDirectionalLight[] _shadowedDirectionalLights =
-            new ShadowedDirectionalLight[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT];
 
         /// <summary> 阴影设置 </summary>
         private ShadowSettings _settings;
 
+        // 当前应用阴影的方向光数量
         private int _shadowedDirectionalLightCount;
 
         public void Setup(ScriptableRenderContext context, CullingResults cullingResults, ShadowSettings settings)
@@ -72,14 +80,14 @@ namespace CustomRP
 
         public void Cleanup()
         {
-            _buffer.ReleaseTemporaryRT(DIRECTIONAL_SHADOW_ATLAS_ID);
+            _buffer.ReleaseTemporaryRT(DirectionalShadowAtlasId);
             ExecuteBuffer();
         }
 
         /// <summary>
-        /// 先登记：在阴影图集中登记灯光的阴影，并存储渲染这些阴影贴图所需要的信息。
-        /// 返回 (阴影强度, Shadow Map 偏移量)
+        /// 登记光照：在阴影图集中登记灯光的阴影，并存储渲染这些阴影贴图所需要的信息。
         /// </summary>
+        /// <returns>Vector2(阴影强度, Shadow Map 偏移量)</returns>
         public Vector2 ReserveDirectionalShadows(Light light, int visibleLightIndex)
         {
             if (_shadowedDirectionalLightCount < MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT
@@ -90,7 +98,7 @@ namespace CustomRP
                 // 剔除结果中阴影的包围盒是有效的
                 && _cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds _))
             {
-                _shadowedDirectionalLights[_shadowedDirectionalLightCount] = new ShadowedDirectionalLight()
+                ShadowedDirectionalLights[_shadowedDirectionalLightCount] = new ShadowedDirectionalLight()
                 {
                     VisibleLightIndex = visibleLightIndex,
                 };
@@ -105,19 +113,20 @@ namespace CustomRP
         }
 
         /// <summary>
-        /// 再创建 Shadow Map + 画阴影贴图
+        /// 绘制阴影 (Shadow map)
         /// </summary>
         public void Render()
         {
             if (_shadowedDirectionalLightCount > 0)
             {
+                // 绘制方向阴影
                 RenderDirectionalShadows();
             }
             else
             {
                 // 无需阴影时，获取一个 1x1 的虚拟纹理，保证 _DirectionalShadowAtlas 这个全局变量永远存在，shader 里不用写“有没有阴影贴图”两个变体，避免额外的着色器变体
                 _buffer.GetTemporaryRT(
-                    DIRECTIONAL_SHADOW_ATLAS_ID,
+                    DirectionalShadowAtlasId,
                     1,
                     1,
                     32,
@@ -134,7 +143,7 @@ namespace CustomRP
             // 获取一个专门渲染阴影的 RenderTexture
             // 32 是深度位数（Shadow Map 本质是深度图）
             _buffer.GetTemporaryRT(
-                DIRECTIONAL_SHADOW_ATLAS_ID,
+                DirectionalShadowAtlasId,
                 atlasSize,
                 atlasSize,
                 32,
@@ -143,7 +152,7 @@ namespace CustomRP
             );
             // 设置当前上下文的 RenderTarget 为刚才获取的 RenderTexture
             _buffer.SetRenderTarget(
-                DIRECTIONAL_SHADOW_ATLAS_ID,
+                DirectionalShadowAtlasId,
                 RenderBufferLoadAction.DontCare,
                 RenderBufferStoreAction.Store
             );
@@ -175,19 +184,19 @@ namespace CustomRP
 
             for (int i = 0; i < _shadowedDirectionalLightCount; i++)
             {
-                RenderDirectionalShadows(i, split, tileSize);
+                RenderDirectionalShadow(i, split, tileSize);
             }
 
-            _buffer.SetGlobalInt(CASCADE_COUNT_ID, _settings.Directional.CascadeCount);
-            _buffer.SetGlobalVectorArray(CASCADE_CULLING_SPHERES_ID, CascadeCullingSpheres);
-            _buffer.SetGlobalMatrixArray(DIRECTIONAL_SHADOW_MATRICES_ID, DirectionalShadowMatrices);
+            _buffer.SetGlobalInt(CascadeCountId, _settings.Directional.CascadeCount);
+            _buffer.SetGlobalVectorArray(CascadeCullingSpheresId, CascadeCullingSpheres);
+            _buffer.SetGlobalMatrixArray(DirectionalShadowMatricesId, DirectionalShadowMatrices);
             _buffer.EndSample(BUFFER_NAME);
             ExecuteBuffer();
         }
 
-        private void RenderDirectionalShadows(int index, int split, int tileSize)
+        private void RenderDirectionalShadow(int index, int split, int tileSize)
         {
-            var light = _shadowedDirectionalLights[index];
+            var light = ShadowedDirectionalLights[index];
             var shadowSettings = new ShadowDrawingSettings(_cullingResults, light.VisibleLightIndex);
 
             int cascadeCount = _settings.Directional.CascadeCount;
