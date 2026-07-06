@@ -38,9 +38,12 @@ namespace CustomRP
 
         private static readonly int DIRECTIONAL_SHADOW_ATLAS_ID = Shader.PropertyToID("_DirectionalShadowAtlas");
         private static readonly int DIRECTIONAL_SHADOW_MATRICES_ID = Shader.PropertyToID("_DirectionalShadowMatrices");
+        private static readonly int CASCADE_COUNT_ID = Shader.PropertyToID("_CascadeCount");
+        private static readonly int CASCADE_CULLING_SPHERES_ID = Shader.PropertyToID("_CascadeCullingSpheres");
 
         private static readonly Matrix4x4[] DirectionalShadowMatrices =
             new Matrix4x4[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADES];
+        private static readonly Vector4[] CascadeCullingSpheres = new Vector4[MAX_CASCADES];
 
         /// <summary> 渲染上下文 </summary>
         private ScriptableRenderContext _context;
@@ -175,6 +178,8 @@ namespace CustomRP
                 RenderDirectionalShadows(i, split, tileSize);
             }
 
+            _buffer.SetGlobalInt(CASCADE_COUNT_ID, _settings.Directional.CascadeCount);
+            _buffer.SetGlobalVectorArray(CASCADE_CULLING_SPHERES_ID, CascadeCullingSpheres);
             _buffer.SetGlobalMatrixArray(DIRECTIONAL_SHADOW_MATRICES_ID, DirectionalShadowMatrices);
             _buffer.EndSample(BUFFER_NAME);
             ExecuteBuffer();
@@ -185,27 +190,47 @@ namespace CustomRP
             var light = _shadowedDirectionalLights[index];
             var shadowSettings = new ShadowDrawingSettings(_cullingResults, light.VisibleLightIndex);
 
-            // 基于剔除数据，算出光源的 VP 矩阵
-            // 函数内部具体做法：构造一个正交视锥体（一个盒子），让这个盒子刚好包住「相机能看到的，且在阴影距离内的场景」，盒子的朝向就是光照方向。
-            _cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(
-                light.VisibleLightIndex,
-                0,
-                1,
-                Vector3.zero,
-                tileSize,
-                0f,
-                out Matrix4x4 viewMatrix,
-                out Matrix4x4 projectionMatrix,
-                out ShadowSplitData splitData
-            );
+            int cascadeCount = _settings.Directional.CascadeCount;
+            int tileOffset = index * cascadeCount;
+            Vector3 cascadeRatios = _settings.Directional.CascadeRatios;
 
-            shadowSettings.splitData = splitData;
-            // 划定 Tile 视口：把渲染区域限定在图集里属于这盏光的那一块，这样 _context.DrawShadows 画出来的深度只写进这个 tile，不会覆盖别的光的 tile。
-            var offset = SetTileViewport(index, split, tileSize);
-            DirectionalShadowMatrices[index] = ConvertToAtlasMatrix(projectionMatrix * viewMatrix, offset, split);
-            _buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
-            ExecuteBuffer();
-            _context.DrawShadows(ref shadowSettings);
+            for (int cascadeIndex = 0; cascadeIndex < cascadeCount; cascadeIndex++)
+            {
+                // 基于剔除数据，算出光源的 VP 矩阵
+                // 函数内部具体做法：构造一个正交视锥体（一个盒子），让这个盒子刚好包住「相机能看到的，且在阴影距离内的场景」，盒子的朝向就是光照方向。
+                _cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(
+                    light.VisibleLightIndex,
+                    cascadeIndex,  // 级联索引
+                    cascadeCount,  // 级联数量
+                    cascadeRatios, // 级联比例
+                    tileSize,
+                    0f,
+                    out Matrix4x4 viewMatrix,
+                    out Matrix4x4 projectionMatrix,
+                    out ShadowSplitData splitData
+                );
+
+                shadowSettings.splitData = splitData;
+
+                // 只需要记录第一个光源的级联剔除球体，所有光源的级联都是等效的
+                if (index == 0)
+                {
+                    Vector4 cullingSphere = splitData.cullingSphere;
+                    cullingSphere.w *= cullingSphere.w; // 直接存储平方半径，方便在着色器中计算一个片段是否在球体内部（比较球体中心到片段的平方距离与球体的平方半径）
+                    CascadeCullingSpheres[cascadeIndex] = cullingSphere;
+                }
+
+                int tileIndex = tileOffset + cascadeIndex; // 该级联所在的 tile
+                // 划定 Tile 视口：把渲染区域限定在图集里属于这盏光的那一块，这样 _context.DrawShadows 画出来的深度只写进这个 tile，不会覆盖别的光的 tile。
+                DirectionalShadowMatrices[tileIndex] = ConvertToAtlasMatrix(
+                    projectionMatrix * viewMatrix,
+                    SetTileViewport(tileIndex, split, tileSize),
+                    split
+                );
+                _buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
+                ExecuteBuffer();
+                _context.DrawShadows(ref shadowSettings);
+            }
         }
 
         /// <summary>

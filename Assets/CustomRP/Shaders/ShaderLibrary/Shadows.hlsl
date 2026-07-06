@@ -4,14 +4,40 @@
 #define MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT 4
 #define MAX_CASCADES_COUNT 4
 
+#include "Common.hlsl"
+
 // 阴影贴图 (shadow map) 的采样用 TEXTURE2D_SHADOW，采样器用 SAMPLER_CMP
 TEXTURE2D_SHADOW(_DirectionalShadowAtlas);
 #define SHADOW_SAMPLER sampler_linear_clamp_compare
 SAMPLER_CMP(SHADOW_SAMPLER);
 
 CBUFFER_START(_CustomShadows)
+    int _CascadeCount;
+    float4 _CascadeCullingSpheres[MAX_CASCADES_COUNT];
     float4x4 _DirectionalShadowMatrices[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADES_COUNT];
 CBUFFER_END
+
+struct ShadowData
+{
+    int cascadeIndex;
+};
+
+ShadowData GetShadowData(Surface surfaceWS)
+{
+    ShadowData data;
+    int i;
+    for (i = 0; i < _CascadeCount; i++)
+    {
+        float4 sphere = _CascadeCullingSpheres[i];
+        float distanceSqr = DistanceSquared(surfaceWS.position, sphere.xyz);
+        if (distanceSqr < sphere.w)
+        {
+            break;
+        }
+    }
+    data.cascadeIndex = i;
+    return data;
+}
 
 struct DirectionalShadowData
 {
