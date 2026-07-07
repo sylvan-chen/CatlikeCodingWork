@@ -48,6 +48,8 @@ namespace CustomRP
         private static readonly int CascadeCountId = Shader.PropertyToID("_CascadeCount");
         /// <summary> 级联剔除球 </summary>
         private static readonly int CascadeCullingSpheresId = Shader.PropertyToID("_CascadeCullingSpheres");
+        /// <summary> 阴影距离衰减 </summary>
+        private static readonly int ShadowDistanceFadeId = Shader.PropertyToID("_ShadowDistanceFade");
 
         private readonly ShadowedDirectionalLight[] ShadowedDirectionalLights =
             new ShadowedDirectionalLight[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT];
@@ -187,9 +189,18 @@ namespace CustomRP
                 RenderDirectionalShadow(i, split, tileSize);
             }
 
+            float cascadeFade = 1f - _settings.Directional.CascadeFade;
             _buffer.SetGlobalInt(CascadeCountId, _settings.Directional.CascadeCount);
             _buffer.SetGlobalVectorArray(CascadeCullingSpheresId, CascadeCullingSpheres);
             _buffer.SetGlobalMatrixArray(DirectionalShadowMatricesId, DirectionalShadowMatrices);
+            _buffer.SetGlobalVector(
+                ShadowDistanceFadeId,
+                new Vector4(
+                    1f / _settings.MaxDistance,
+                    1f / _settings.DistanceFade,
+                    1f / (1f - cascadeFade * cascadeFade)
+                )
+            );
             _buffer.EndSample(BUFFER_NAME);
             ExecuteBuffer();
         }
@@ -237,8 +248,10 @@ namespace CustomRP
                     split
                 );
                 _buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
+                _buffer.SetGlobalDepthBias(0, 3f);
                 ExecuteBuffer();
                 _context.DrawShadows(ref shadowSettings);
+                _buffer.SetGlobalDepthBias(0f, 0f);
             }
         }
 

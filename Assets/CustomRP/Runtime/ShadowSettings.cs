@@ -33,14 +33,19 @@ namespace CustomRP
             public float CascadeRatio2;
             [Range(0f, 1f)]
             public float CascadeRatio3;
+            [SerializeField, Range(0.001f, 1f)]
+            [Tooltip("阴影级联衰减")]
+            public float CascadeFade;
 
             public Vector3 CascadeRatios => new Vector3(CascadeRatio1, CascadeRatio2, CascadeRatio3);
         }
 
-        [SerializeField, Min(0f)]
+        [SerializeField, Min(0.001f)]
         [Tooltip("阴影最大距离")]
         private float _maxDistance = 100f;
-
+        [SerializeField, Range(0.001f, 1f)]
+        [Tooltip("阴影距离衰减")]
+        private float _distanceFade = 0.1f;
         [SerializeField]
         [Tooltip("方向阴影设置")]
         private DirectionalShadow _directional = new()
@@ -50,9 +55,11 @@ namespace CustomRP
             CascadeRatio1 = 0.1f,
             CascadeRatio2 = 0.25f,
             CascadeRatio3 = 0.5f,
+            CascadeFade = 0.1f,
         };
 
         public float MaxDistance => _maxDistance;
+        public float DistanceFade => _distanceFade;
         public DirectionalShadow Directional => _directional;
     }
 }
