@@ -31,6 +31,8 @@ namespace CustomRP
         public struct ShadowedDirectionalLight
         {
             public int VisibleLightIndex;
+            public float SlopeScaleBias;
+            public float NearPlaneOffset;
         }
 
         private const string BUFFER_NAME = "Shadows";
@@ -48,6 +50,10 @@ namespace CustomRP
         private static readonly int CascadeCountId = Shader.PropertyToID("_CascadeCount");
         /// <summary> 级联剔除球 </summary>
         private static readonly int CascadeCullingSpheresId = Shader.PropertyToID("_CascadeCullingSpheres");
+        /// <summary> 级联数据 </summary>
+        private static readonly int CascadeDataId = Shader.PropertyToID("_CascadeData");
+        /// <summary> 阴影贴图尺寸 </summary>
+        private static readonly int ShadowAtlasSizeId = Shader.PropertyToID("_ShadowAtlasSize");
         /// <summary> 阴影距离衰减 </summary>
         private static readonly int ShadowDistanceFadeId = Shader.PropertyToID("_ShadowDistanceFade");
 
@@ -56,6 +62,14 @@ namespace CustomRP
         private static readonly Matrix4x4[] DirectionalShadowMatrices =
             new Matrix4x4[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADES_COUNT];
         private static readonly Vector4[] CascadeCullingSpheres = new Vector4[MAX_CASCADES_COUNT];
+        private static readonly Vector4[] CascadeData = new Vector4[MAX_CASCADES_COUNT];
+
+        private static string[] DirectionalFilterKeywords =
+        {
+            "_DIRECTIONAL_PCF3", "_DIRECTIONAL_PCF5", "_DIRECTIONAL_PCF7",
+        };
+
+        private static string[] CascadeBlendKeywords = { "_CASCADE_BLEND_SOFT", "_CASCADE_BLEND_DITHER" };
 
         /// <summary> 渲染上下文 </summary>
         private ScriptableRenderContext _context;
@@ -90,7 +104,7 @@ namespace CustomRP
         /// 登记光照：在阴影图集中登记灯光的阴影，并存储渲染这些阴影贴图所需要的信息。
         /// </summary>
         /// <returns>Vector2(阴影强度, Shadow Map 偏移量)</returns>
-        public Vector2 ReserveDirectionalShadows(Light light, int visibleLightIndex)
+        public Vector3 ReserveDirectionalShadows(Light light, int visibleLightIndex)
         {
             if (_shadowedDirectionalLightCount < MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT
                 // 阴影模式不能为 None
@@ -103,15 +117,18 @@ namespace CustomRP
                 ShadowedDirectionalLights[_shadowedDirectionalLightCount] = new ShadowedDirectionalLight()
                 {
                     VisibleLightIndex = visibleLightIndex,
+                    SlopeScaleBias = light.shadowBias,
+                    NearPlaneOffset = light.shadowNearPlane,
                 };
 
-                return new Vector2(
+                return new Vector3(
                     light.shadowStrength,
-                    _settings.Directional.CascadeCount * _shadowedDirectionalLightCount++
+                    _settings.Directional.CascadeCount * _shadowedDirectionalLightCount++,
+                    light.shadowNormalBias
                 );
             }
 
-            return Vector2.zero;
+            return Vector3.zero;
         }
 
         /// <summary>
@@ -192,6 +209,7 @@ namespace CustomRP
             float cascadeFade = 1f - _settings.Directional.CascadeFade;
             _buffer.SetGlobalInt(CascadeCountId, _settings.Directional.CascadeCount);
             _buffer.SetGlobalVectorArray(CascadeCullingSpheresId, CascadeCullingSpheres);
+            _buffer.SetGlobalVectorArray(CascadeDataId, CascadeData);
             _buffer.SetGlobalMatrixArray(DirectionalShadowMatricesId, DirectionalShadowMatrices);
             _buffer.SetGlobalVector(
                 ShadowDistanceFadeId,
@@ -201,6 +219,9 @@ namespace CustomRP
                     1f / (1f - cascadeFade * cascadeFade)
                 )
             );
+            SetKeywords(DirectionalFilterKeywords, (int)_settings.Directional.Filter - 1);
+            SetKeywords(CascadeBlendKeywords, (int)_settings.Directional.CascadeBlend - 1);
+            _buffer.SetGlobalVector(ShadowAtlasSizeId, new Vector4(atlasSize, 1f / atlasSize));
             _buffer.EndSample(BUFFER_NAME);
             ExecuteBuffer();
         }
@@ -214,6 +235,7 @@ namespace CustomRP
             int tileOffset = index * cascadeCount;
             Vector3 cascadeRatios = _settings.Directional.CascadeRatios;
 
+            float cullingFactor = Mathf.Max(0f, 0.8f - _settings.Directional.CascadeFade);
             for (int cascadeIndex = 0; cascadeIndex < cascadeCount; cascadeIndex++)
             {
                 // 基于剔除数据，算出光源的 VP 矩阵
@@ -224,20 +246,19 @@ namespace CustomRP
                     cascadeCount,  // 级联数量
                     cascadeRatios, // 级联比例
                     tileSize,
-                    0f,
+                    light.NearPlaneOffset,
                     out Matrix4x4 viewMatrix,
                     out Matrix4x4 projectionMatrix,
                     out ShadowSplitData splitData
                 );
 
+                splitData.shadowCascadeBlendCullingFactor = cullingFactor;
                 shadowSettings.splitData = splitData;
 
-                // 只需要记录第一个光源的级联剔除球体，所有光源的级联都是等效的
+                // 只需要记录第一个光源的级联数据，所有光源的级联都是等效的
                 if (index == 0)
                 {
-                    Vector4 cullingSphere = splitData.cullingSphere;
-                    cullingSphere.w *= cullingSphere.w; // 直接存储平方半径，方便在着色器中计算一个片段是否在球体内部（比较球体中心到片段的平方距离与球体的平方半径）
-                    CascadeCullingSpheres[cascadeIndex] = cullingSphere;
+                    SetCascadeData(cascadeIndex, splitData.cullingSphere, tileSize);
                 }
 
                 int tileIndex = tileOffset + cascadeIndex; // 该级联所在的 tile
@@ -248,11 +269,27 @@ namespace CustomRP
                     split
                 );
                 _buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
-                _buffer.SetGlobalDepthBias(0, 3f);
+                _buffer.SetGlobalDepthBias(0, light.SlopeScaleBias);
                 ExecuteBuffer();
                 _context.DrawShadows(ref shadowSettings);
                 _buffer.SetGlobalDepthBias(0f, 0f);
             }
+        }
+
+        /// <summary>
+        /// 设置级联数据
+        /// </summary>
+        private void SetCascadeData(int index, Vector4 cullingSphere, float tileSize)
+        {
+            // 级联剔除球数据
+            float texelSize = 2f * cullingSphere.w / tileSize;
+            float filterSize = texelSize * ((float)_settings.Directional.Filter + 1f);
+            cullingSphere.w -= filterSize;
+            cullingSphere.w *= cullingSphere.w; // 直接存储平方半径，方便在着色器中计算一个片段是否在球体内部（比较球体中心到片段的平方距离与球体的平方半径）
+            CascadeCullingSpheres[index] = cullingSphere;
+
+            // 级联数据
+            CascadeData[index] = new Vector4(1f / cullingSphere.w, filterSize * 1.4142136f);
         }
 
         /// <summary>
@@ -290,6 +327,21 @@ namespace CustomRP
             Vector2 offset = new Vector2(index % split, index / split);
             _buffer.SetViewport(new Rect(offset.x * tileSize, offset.y * tileSize, tileSize, tileSize));
             return offset;
+        }
+
+        private void SetKeywords(string[] keywords, int enabledIndex)
+        {
+            for (int i = 0; i < keywords.Length; i++)
+            {
+                if (i == enabledIndex)
+                {
+                    _buffer.EnableShaderKeyword(keywords[i]);
+                }
+                else
+                {
+                    _buffer.DisableShaderKeyword(keywords[i]);
+                }
+            }
         }
 
         private void ExecuteBuffer()

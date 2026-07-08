@@ -9,6 +9,8 @@
         // 典型的裁剪材质通常使用 AlphaTest 渲染队列 (在所有不透明物体之后渲染)，因为使用了裁剪就无法再假定三角形完全覆盖其后方内容，导致一些 GPU 优化无法实现
         // Toggle(...) 的参数会添加一个 shader keyword，勾选/不勾选会启用/禁用该 keyword
         [Toggle(_CLIPPING)] _Clipping ("Alpha Clipping", Float) = 0
+        [Toggle(_RECEIVE_SHADOWS)] _ReceiveShadows ("Receive Shadows", Float) = 1
+        [KeywordEnum(On, Clip, Dither, Off)] _Shadows ("Shadows", Float) = 0
         _Cutoff ("Alpha Cutoff", Range(0.0, 1.0)) = 0.5
         // 表面可以是完全漫反射的、完美镜面的，或是介于两者之间的任何状态。我们有多种方法来控制这一点。
         // 表面是金属性的还是非金属性的
@@ -43,8 +45,11 @@
             HLSLPROGRAM
             #pragma target 3.5 // 只支持 3.5 以上版本
             // Unity 不会把一个 shader 编译成一个完整的程序。它会根据 keyword 的开/关组合，编译出多个不同版本的 shader，每个版本叫做一个 变体（variant）
-            #pragma shader_feature _CLIPPING
+            #pragma shader_feature _RECEIVE_SHADOWS
+            #pragma shader_feature _ _SHADOWS_CLIP _SHADOWS_DITHER
             #pragma shader_feature _PREMULTIPLY_ALPHA
+            #pragma multi_compile _ _DIRECTIONAL_PCF3 _DIRECTIONAL_PCF5 _DIRECTIONAL_PCF7
+            #pragma multi_compile _ _CASCADE_BLEND_SOFT _CASCADE_BLEND_DITHER
             #pragma multi_compile_instancing // 支持 GPU Instance 变体
             #pragma vertex LitPassVertex
             #pragma fragment LitPassFragment

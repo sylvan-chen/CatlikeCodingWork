@@ -19,11 +19,27 @@ namespace CustomRP
             _8192 = 8192,
         }
 
+        public enum FilterMode
+        {
+            PCF2x2,
+            PCF3x3,
+            PCF5x5,
+            PCF7x7
+        }
+
+        public enum CascadeBlendMode
+        {
+            Hard,
+            Soft,
+            Dither,
+        }
+
         /// <summary> 方向阴影设置 </summary>
         [Serializable]
         public struct DirectionalShadow
         {
             public MapSize AtlasSize;
+            public FilterMode Filter;
             [Range(1, 4)]
             [Tooltip("级联数量，每个方向光最多支持 4 个级联")]
             public int CascadeCount;
@@ -36,6 +52,7 @@ namespace CustomRP
             [SerializeField, Range(0.001f, 1f)]
             [Tooltip("阴影级联衰减")]
             public float CascadeFade;
+            public CascadeBlendMode CascadeBlend;
 
             public Vector3 CascadeRatios => new Vector3(CascadeRatio1, CascadeRatio2, CascadeRatio3);
         }
@@ -51,11 +68,13 @@ namespace CustomRP
         private DirectionalShadow _directional = new()
         {
             AtlasSize = MapSize._1024,
+            Filter = FilterMode.PCF2x2,
             CascadeCount = 4,
             CascadeRatio1 = 0.1f,
             CascadeRatio2 = 0.25f,
             CascadeRatio3 = 0.5f,
             CascadeFade = 0.1f,
+            CascadeBlend = CascadeBlendMode.Hard,
         };
 
         public float MaxDistance => _maxDistance;
