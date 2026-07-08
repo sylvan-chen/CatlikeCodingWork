@@ -78,11 +78,13 @@ namespace CustomRP
             // 剔除 (-> 配置阴影) -> 配置光照 (-> 绘制阴影) -> 配置相机 -> 绘制几何图形
 
             // 先进行剔除
+            // 剔除结果 _cullingResults 是后续步骤的数据源
             if (!Cull(shadowSettings.MaxDistance)) return;
 
             _commandBuffer.BeginSample(SampleName);
             ExecuteBuffer();
             // 配置光照
+            // 通过 _cullingResults.visibleLights 知道哪些光需要处理
             _lighting.Setup(context, _cullingResults, shadowSettings);
             _commandBuffer.EndSample(SampleName);
 

@@ -11,7 +11,7 @@ namespace CustomRP
     {
         private const string BUFFER_NAME = "Lighting";
 
-        // ============================== 方向光相关配置 ==============================
+        // ============================== 方向光相关数据 ==============================
 
         /// <summary> 最大方向光数量 </summary>
         private const int MAX_DIRECTIONAL_LIGHT_COUNT = 4;

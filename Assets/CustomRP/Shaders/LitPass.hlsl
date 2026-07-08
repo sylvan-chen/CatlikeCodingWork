@@ -80,7 +80,7 @@ Varyings LitPassVertex(Attributes input)
 
 float4 LitPassFragment(Varyings input) : SV_TARGET
 {
-    UNITY_SETUP_INSTANCE_ID(input)
+    UNITY_SETUP_INSTANCE_ID(input) // 从实例中提取实例索引
 
     float4 baseMap = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.baseUV);
     float4 baseColor = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseColor);
@@ -89,6 +89,7 @@ float4 LitPassFragment(Varyings input) : SV_TARGET
     clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
     #endif
 
+    // 构造表面数据结构
     Surface surface;
     surface.position = input.positionWS;
     surface.normal = normalize(input.normalWS);
@@ -100,12 +101,15 @@ float4 LitPassFragment(Varyings input) : SV_TARGET
     surface.smoothness = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Smoothness);
     surface.dither = InterleavedGradientNoise(input.positionCS.xy, 0);
 
+    // 累加光照的颜色贡献
     #if defined(_PREMULTIPLY_ALPHA)
     BRDF brdf = GetBRDF(surface, true);
     #else
     BRDF brdf = GetBRDF(surface);
     #endif
     float3 color = GetLighting(surface, brdf);
+
+    // 返回最终颜色
     return float4(color, surface.alpha);
 }
 
