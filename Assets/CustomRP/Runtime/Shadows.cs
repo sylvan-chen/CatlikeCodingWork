@@ -57,6 +57,7 @@ namespace CustomRP
         /// <summary> 阴影距离衰减 </summary>
         private static readonly int ShadowDistanceFadeId = Shader.PropertyToID("_ShadowDistanceFade");
 
+        /// <summary> 登记到阴影图集的所有方向光 </summary>
         private readonly ShadowedDirectionalLight[] ShadowedDirectionalLights =
             new ShadowedDirectionalLight[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT];
         private static readonly Matrix4x4[] DirectionalShadowMatrices =
@@ -101,9 +102,9 @@ namespace CustomRP
         }
 
         /// <summary>
-        /// 登记光照：在阴影图集中登记灯光的阴影，并存储渲染这些阴影贴图所需要的信息。
+        /// 登记光照：在阴影图集中登记要应用的灯光
         /// </summary>
-        /// <returns>Vector2(阴影强度, Shadow Map 偏移量)</returns>
+        /// <returns>这盏灯应用阴影贴图需要的数据: Vector2(阴影强度, Shadow Map 偏移量, 阴影法线偏移)</returns>
         public Vector3 ReserveDirectionalShadows(Light light, int visibleLightIndex)
         {
             if (_shadowedDirectionalLightCount < MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT
@@ -114,6 +115,7 @@ namespace CustomRP
                 // 剔除结果中阴影的包围盒是有效的
                 && _cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds _))
             {
+                // 记录可应用阴影的方向光数据
                 ShadowedDirectionalLights[_shadowedDirectionalLightCount] = new ShadowedDirectionalLight()
                 {
                     VisibleLightIndex = visibleLightIndex,
@@ -121,6 +123,7 @@ namespace CustomRP
                     NearPlaneOffset = light.shadowNearPlane,
                 };
 
+                // 返回应用贴图需要的数据
                 return new Vector3(
                     light.shadowStrength,
                     _settings.Directional.CascadeCount * _shadowedDirectionalLightCount++,
@@ -132,13 +135,13 @@ namespace CustomRP
         }
 
         /// <summary>
-        /// 绘制阴影 (Shadow map)
+        /// 绘制阴影贴图 (Shadow map)
         /// </summary>
         public void Render()
         {
             if (_shadowedDirectionalLightCount > 0)
             {
-                // 绘制方向阴影
+                // 方向阴影的贴图
                 RenderDirectionalShadows();
             }
             else
@@ -155,6 +158,9 @@ namespace CustomRP
             }
         }
 
+        /// <summary>
+        /// 绘制方向光阴影贴图
+        /// </summary>
         private void RenderDirectionalShadows()
         {
             // 创建阴影图集
@@ -181,7 +187,8 @@ namespace CustomRP
             ExecuteBuffer();
 
             // 按照光源数量和级联数量拆分图块，把多盏光的 Shadow Map 拼进一张纹理，省去切换纹理的开销
-            int tiles = _settings.Directional.CascadeCount * _shadowedDirectionalLightCount; // 每盏光占用级联数量的 tile * 总共的光数量
+            // 总 tile 数量 = 级联数量 * 总登记灯光数量
+            int tiles = _settings.Directional.CascadeCount * _shadowedDirectionalLightCount;
             // split 代表每条边要切分的数量，总块数为 split * split
             int split;
             if (tiles <= 1)
@@ -199,8 +206,10 @@ namespace CustomRP
                 // 最多切成 4x4=16 块
                 split = 4;
             }
+            // 每个 tile 的尺寸 = 图集尺寸 / 分割数
             int tileSize = atlasSize / split;
 
+            // 遍历绘制每一盏登记的灯光
             for (int i = 0; i < _shadowedDirectionalLightCount; i++)
             {
                 RenderDirectionalShadow(i, split, tileSize);
@@ -226,19 +235,23 @@ namespace CustomRP
             ExecuteBuffer();
         }
 
+        /// <summary>
+        /// 绘制单盏方向光的阴影贴图
+        /// </summary>
         private void RenderDirectionalShadow(int index, int split, int tileSize)
         {
             var light = ShadowedDirectionalLights[index];
+            // 要绘制阴影贴图，需要的配置参数
             var shadowSettings = new ShadowDrawingSettings(_cullingResults, light.VisibleLightIndex);
 
             int cascadeCount = _settings.Directional.CascadeCount;
-            int tileOffset = index * cascadeCount;
+            int tileOffset = index * cascadeCount; // 每盏光（每个索引）占用级联数量的 tile
             Vector3 cascadeRatios = _settings.Directional.CascadeRatios;
 
             float cullingFactor = Mathf.Max(0f, 0.8f - _settings.Directional.CascadeFade);
+            // 为每层级联做正交投影，拿到 VP 矩阵
             for (int cascadeIndex = 0; cascadeIndex < cascadeCount; cascadeIndex++)
             {
-                // 基于剔除数据，算出光源的 VP 矩阵
                 // 函数内部具体做法：构造一个正交视锥体（一个盒子），让这个盒子刚好包住「相机能看到的，且在阴影距离内的场景」，盒子的朝向就是光照方向。
                 _cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(
                     light.VisibleLightIndex,
@@ -247,8 +260,8 @@ namespace CustomRP
                     cascadeRatios, // 级联比例
                     tileSize,
                     light.NearPlaneOffset,
-                    out Matrix4x4 viewMatrix,
-                    out Matrix4x4 projectionMatrix,
+                    out Matrix4x4 viewMatrix,       // 输出 View 矩阵
+                    out Matrix4x4 projectionMatrix, // 输出 Projection 矩阵
                     out ShadowSplitData splitData
                 );
 
@@ -322,9 +335,9 @@ namespace CustomRP
             return matrix;
         }
 
-        private Vector2 SetTileViewport(int index, int split, float tileSize)
+        private Vector2 SetTileViewport(int tileIndex, int split, float tileSize)
         {
-            Vector2 offset = new Vector2(index % split, index / split);
+            Vector2 offset = new Vector2(tileIndex % split, tileIndex / split);
             _buffer.SetViewport(new Rect(offset.x * tileSize, offset.y * tileSize, tileSize, tileSize));
             return offset;
         }

@@ -20,9 +20,9 @@ namespace CustomRP
         private static readonly int DirectionalLightCountId = Shader.PropertyToID("_DirectionalLightCount");
         /// <summary> 方向光颜色 </summary>
         private static readonly int DirectionalLightColorsId = Shader.PropertyToID("_DirectionalLightColors");
-        /// <summary> 方向光方向 </summary>
+        /// <summary> 方向光入射方向 </summary>
         private static readonly int DirectionalLightDirectionsId = Shader.PropertyToID("_DirectionalLightDirections");
-        /// <summary> 方向光阴影数据 </summary>
+        /// <summary> 方向光应用阴影贴图需要的数据 </summary>
         private static readonly int DirectionalLightShadowDataId = Shader.PropertyToID("_DirectionalLightShadowData");
 
         private static Vector4[] DirectionalLightColors = new Vector4[MAX_DIRECTIONAL_LIGHT_COUNT];
@@ -103,9 +103,9 @@ namespace CustomRP
             DirectionalLightColors[index] = visibleLight.finalColor;
             // localToWorldMatrix 的第三列 = Z 轴 = 物体的"前向"
             // 对方向光来说，前向 = 光线前进的方向
-            // 我们要的"指向光源的方向"（从表面射向光源），所以取负
+            // 我们要的是"指向光源的方向"（从表面射向光源），所以取负
             DirectionalLightDirections[index] = -visibleLight.localToWorldMatrix.GetColumn(2);
-            // 登记这盏光的阴影，返回 Vector3(强度, tile 偏移, 法线偏移)
+            // 登记这盏光到阴影贴图，存储这盏灯应用阴影贴图需要的数据 Vector3(强度, tile 偏移, 法线偏移)
             DirectionalLightShadowData[index] = _shadows.ReserveDirectionalShadows(visibleLight.light, index);
         }
 
