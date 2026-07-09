@@ -1,4 +1,4 @@
-﻿# Shader 变体
+﻿# Shader 关键字和变体
 
 Unity 不会把一个 shader 编译成一个完整的程序。它会根据 keyword 的开/关组合，编译出多个不同版本的 shader，每个版本叫做一个 变体（variant）。
 

@@ -89,7 +89,7 @@ _context.DrawShadows(ref shadowSettings);                         // 画"LightMo
 - 盒子朝向光照方向
 
 ```csharp
-// Shadows.cs:243-253
+// Shadows.cs
 _cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(
     light.VisibleLightIndex,
     cascadeIndex,        // 当前级联
@@ -128,7 +128,7 @@ atlas 1024×1024（一张大纹理）
 └──────────────────┴──────────────────┘
 ```
 
-切分规则（Shadows.cs:184-202）：
+切分规则（Shadows.cs）：
 
 ```csharp
 int tiles = _settings.Directional.CascadeCount * _shadowedDirectionalLightCount;
@@ -281,9 +281,9 @@ D3D11/12、Metal、Vulkan 用 **reverse-Z**（近平面深度 = 1，远平面 = 
 ### 5.5 完整流程图
 
 ```
-                         ┌───────────────┐
+                         ┌────────────────┐
                          │  P (世界坐标)  │
-                         └───────┬───────┘
+                         └───────┬────────┘
                                  │
                                  │  mul(_DirectionalShadowMatrices[i], float4(P, 1))
                                  │
@@ -291,7 +291,7 @@ D3D11/12、Metal、Vulkan 用 **reverse-Z**（近平面深度 = 1，远平面 = 
                 ┌────────────────────────────────────┐
                 │  (uv.x, uv.y, depth, 1)            │
                 │   uv ∈ [0, 1] 当前 tile            │
-                │   depth ∈ [0, 1] reverse-Z 或正序 │
+                │   depth ∈ [0, 1] reverse-Z 或正序  │
                 └────────────────────────────────────┘
                                  │
                 ┌────────────────┼─────────────────┐
@@ -382,33 +382,33 @@ float GetShadow(float3 worldPos)
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│ 1. CPU：分配 atlas 纹理 (Shadows.cs:147-157)                        │
+│ 1. CPU：分配 atlas 纹理 (Shadows.cs:147-157)                       │
 │    GetTemporaryRT(_DirectionalShadowAtlas, atlasSize, atlasSize)   │
 └──────────────────────────────────┬─────────────────────────────────┘
                                    ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│ 2. CPU：对每盏方向光、每个级联                                      │
-│    a) ComputeDirectionalShadowMatricesAndCullingPrimitives(...)     │
-│       → 算 view / proj / splitData                                  │
-│    b) SetTileViewport(...)                                          │
-│       → 把 viewport 划到对应 tile                                   │
-│    c) ConvertToAtlasMatrix(...)                                     │
+│ 2. CPU：对每盏方向光、每个级联                                     │
+│    a) ComputeDirectionalShadowMatricesAndCullingPrimitives(...)    │
+│       → 算 view / proj / splitData                                 │
+│    b) SetTileViewport(...)                                         │
+│       → 把 viewport 划到对应 tile                                  │
+│    c) ConvertToAtlasMatrix(...)                                    │
 │       → 把 VP 矩阵变成"世界 → tile UV"矩阵                         │
-│    d) SetViewProjectionMatrices(view, proj) + DrawShadows(...)      │
+│    d) SetViewProjectionMatrices(view, proj) + DrawShadows(...)     │
 │       → 用光源 VP 渲染 ShadowCaster Pass, 深度只写到当前 tile      │
 └──────────────────────────────────┬─────────────────────────────────┘
                                    ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│ 3. CPU：把所有数据传 GPU                                            │
-│    SetGlobalMatrixArray(_DirectionalShadowMatrices, ...)            │
+│ 3. CPU：把所有数据传 GPU                                           │
+│    SetGlobalMatrixArray(_DirectionalShadowMatrices, ...)           │
 └──────────────────────────────────┬─────────────────────────────────┘
                                    ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│ 4. Shader：每个被照亮的片段                                         │
+│ 4. Shader：每个被照亮的片段                                        │
 │    a) worldPos → mul(M, worldPos) → tile 空间坐标                  │
-│    b) SAMPLE_TEXTURE2D_SHADOW(atlas, sampler, sts.xyz)              │
+│    b) SAMPLE_TEXTURE2D_SHADOW(atlas, sampler, sts.xyz)             │
 │       → 硬件 PCF 比较深度，返回 0~1 的"被遮挡比例"                 │
-│    c) 把这个值乘到 IncomingLight 上，遮挡越严重光越弱               │
+│    c) 把这个值乘到 IncomingLight 上，遮挡越严重光越弱              │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
