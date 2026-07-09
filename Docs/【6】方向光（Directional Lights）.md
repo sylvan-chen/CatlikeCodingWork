@@ -73,16 +73,16 @@
 
 ## 三、CPU 侧详解：Lighting.cs
 
-整个文件 100 多行，做的事情就 3 件：找到方向光 → 收集数据 → 喂给 GPU。
+整个文件做的事情就 3 件：找到方向光 → 收集数据 → 喂给 GPU。
 
 ### 3.1 全局数组：CPU 和 GPU 的"握手协议"
 
 ```csharp
-// Lighting.cs:17-30
+// Lighting.cs
 private const int MAX_DIRECTIONAL_LIGHT_COUNT = 4;
 
-private static readonly int DirectionalLightCountId    = Shader.PropertyToID("_DirectionalLightCount");
-private static readonly int DirectionalLightColorsId   = Shader.PropertyToID("_DirectionalLightColors");
+private static readonly int DirectionalLightCountId      = Shader.PropertyToID("_DirectionalLightCount");
+private static readonly int DirectionalLightColorsId     = Shader.PropertyToID("_DirectionalLightColors");
 private static readonly int DirectionalLightDirectionsId = Shader.PropertyToID("_DirectionalLightDirections");
 private static readonly int DirectionalLightShadowDataId = Shader.PropertyToID("_DirectionalLightShadowData");
 
@@ -100,7 +100,7 @@ private static Vector4[] DirectionalLightShadowData = new Vector4[MAX_DIRECTIONA
 ### 3.2 SetupLights：找出所有方向光
 
 ```csharp
-// Lighting.cs:67-91
+// Lighting.cs
 private void SetupLights()
 {
     // 1) 拿剔除后的所有可见光（注意：不是"所有光"，是"相机能看见的光"）
@@ -112,7 +112,7 @@ private void SetupLights()
     {
         VisibleLight visibleLight = visibleLights[i];
 
-        // 2) 只处理方向光
+        // 2) 处理方向光
         if (visibleLight.lightType is LightType.Directional)
         {
             SetupDirectionalLight(directionalLightCount++, ref visibleLight);
@@ -156,13 +156,13 @@ private void SetupDirectionalLight(int index, ref VisibleLight visibleLight)
 
 ```
 光源 ──────────► 物体     光线方向（向前）= (1,0,0)
-       ◄─────────         入射方向（向后）= (-1,0,0)
+     ◄──────────          入射方向（向后）= (-1,0,0)
 ```
 
 shader 里的代码也呼应了这一点：
 
 ```hlsl
-// Light.hlsl:39-49
+// Light.hlsl
 Light GetDirectionalLight(int index, Surface surfaceWS, ShadowData shadowData)
 {
     Light light;
@@ -302,16 +302,16 @@ BRDF = 镜面反射（高光） + 漫反射（基础色）
 ┌────────────────────────────────────────────────────────────────────────┐
 │ CameraRenderer.Cull()                                                  │
 │   → CullingResults.visibleLights (NativeArray<VisibleLight>)           │
-│   → 其中包含这两盏方向光（也可能包含剔除掉的点光源/聚光灯）           │
+│   → 其中包含这两盏方向光（也可能包含剔除掉的点光源/聚光灯）            │
 └────────────────────────────────────────────────────────────────────────┘
                               ↓
 ┌────────────────────────────────────────────────────────────────────────┐
 │ Lighting.SetupLights()                                                 │
 │   遍历 visibleLights:                                                  │
 │     第 1 盏方向光：index=0                                             │
-│       DirectionalLightColors[0]     = finalColor (已乘 intensity)     │
-│       DirectionalLightDirections[0] = -Z 轴列 (取负是入射方向)       │
-│       DirectionalLightShadowData[0] = ReserveDirectionalShadows()     │
+│       DirectionalLightColors[0]     = finalColor (已乘 intensity)      │
+│       DirectionalLightDirections[0] = -Z 轴列 (取负是入射方向)         │
+│       DirectionalLightShadowData[0] = ReserveDirectionalShadows()      │
 │     第 2 盏方向光：index=1                                             │
 │       ... 同上 ...                                                     │
 │                                                                        │
@@ -322,24 +322,25 @@ BRDF = 镜面反射（高光） + 漫反射（基础色）
                               ↓ (GPU 端)
 ┌────────────────────────────────────────────────────────────────────────┐
 │ cbuffer _CustomLight {                                                 │
-│     int _DirectionalLightCount;                                         │
-│     float4 _DirectionalLightColors[4];                                  │
-│     float4 _DirectionalLightDirections[4];                              │
+│     int _DirectionalLightCount;                                        │
+│     float4 _DirectionalLightColors[4];                                 │
+│     float4 _DirectionalLightDirections[4];                             │
 │     float4 _DirectionalLightShadowData[4];                             │
 │ }                                                                      │
 └────────────────────────────────────────────────────────────────────────┘
                               ↓
 ┌────────────────────────────────────────────────────────────────────────┐
 │ LitPassFragment()                                                      │
-│   GetLighting(surface, brdf):                                           │
+│   GetLighting(surface, brdf):                                          │
 │     ShadowData shadowData = GetShadowData(surface);  // 跟光无关       │
-│     for i in 0.._DirectionalLightCount:                                 │
-│       Light light = GetDirectionalLight(i, surface, shadowData);        │
-│         light.color = _DirectionalLightColors[i].rgb                    │
-│         light.direction = _DirectionalLightDirections[i].xyz             │
-│         light.attenuation = GetDirectionalShadow...(...) // 阴影        │
-│       color += IncomingLight(surface, light) * DirectBRDF(surface, brdf, light) │
-│   return float4(color, surface.alpha)                                   │
+│     for i in 0.._DirectionalLightCount:                                │
+│       Light light = GetDirectionalLight(i, surface, shadowData);       │
+│         light.color = _DirectionalLightColors[i].rgb                   │
+│         light.direction = _DirectionalLightDirections[i].xyz           │
+│         light.attenuation = GetDirectionalShadow...(...) // 阴影       │
+│       color += IncomingLight(surface, light)                           │
+│                    * DirectBRDF(surface, brdf, light)                  │
+│   return float4(color, surface.alpha)                                  │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 

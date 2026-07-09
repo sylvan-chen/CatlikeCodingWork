@@ -8,7 +8,7 @@
 
 > **一个点是否在阴影里 = 从光源看过去，这个点前面有没有别的东西挡着它。**
 
-直接对每个像素做"从这个像素发一条光线到光源，问中间有没有东西挡"——这叫 ray tracing，**太贵了**。实时渲染用 shadow map：把"中间有没有东西挡"这件事**预计算**成一张深度图，渲染主场景时直接查表。
+直接对每个像素做"从这个像素发一条光线到光源，问中间有没有东西挡"——这叫**光线追踪（Ray tracing）**，太贵了。一般来说，我们的实时渲染用 **Shadow map**：把"中间有没有东西挡"这件事**预计算**成一张深度图，渲染主场景时直接查表。
 
 ```
         光源
@@ -40,7 +40,7 @@
 把相机搬到光源的位置，用光源的视角渲染**整个场景**。但这次不要颜色，**只要深度**——把"从光源看，每个方向最近的物体有多远"存到一张纹理里，这张纹理叫 **shadow map**。
 
 ```csharp
-// Shadows.cs:271-274
+// Shadows.cs
 _buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);  // 用光源的 VP
 ExecuteBuffer();
 _context.DrawShadows(ref shadowSettings);                         // 画"LightMode" = "ShadowCaster" 的 Pass
@@ -56,9 +56,9 @@ _context.DrawShadows(ref shadowSettings);                         // 画"LightMo
                 光源 view 空间
                   │
                   ▼
-   ┌─────────────────────────┐
+   ┌──────────────────────────┐
    │ shadow map 里某格 (u, v) │   ← 这一格记录了"从光源这个方向看，最近的物体有多远"
-   └─────────────────────────┘
+   └──────────────────────────┘
                    
    P 点 → 投到光源 view 空间 → 得到 (u, v, depth_P)
                                     │

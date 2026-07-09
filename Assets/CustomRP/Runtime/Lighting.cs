@@ -64,13 +64,17 @@ namespace CustomRP
             _shadows.Cleanup();
         }
 
+        /// <summary>
+        /// 配置所有可见光
+        /// </summary>
         private void SetupLights()
         {
-            // 从剔除结果获取所有可见光
+            // 拿剔除后的所有可见光（注意：不是"所有光"，是"相机能看见的光"）
             NativeArray<VisibleLight> visibleLights = _cullingResults.visibleLights;
 
             int directionalLightCount = 0;
 
+            // 逐盏灯处理
             for (int i = 0; i < visibleLights.Length; i++)
             {
                 VisibleLight visibleLight = visibleLights[i];
@@ -83,20 +87,25 @@ namespace CustomRP
                 }
             }
 
-            // --- 方向光 ---
+            // 把所有数据一次性传给 GPU（不是逐盏光传）
             _buffer.SetGlobalInt(DirectionalLightCountId, directionalLightCount);
             _buffer.SetGlobalVectorArray(DirectionalLightColorsId, DirectionalLightColors);
             _buffer.SetGlobalVectorArray(DirectionalLightDirectionsId, DirectionalLightDirections);
             _buffer.SetGlobalVectorArray(DirectionalLightShadowDataId, DirectionalLightShadowData);
         }
 
+        /// <summary>
+        /// 配置一盏光的数据
+        /// </summary>
         private void SetupDirectionalLight(int index, ref VisibleLight visibleLight)
         {
-            // 通过 finalColor 获取最终颜色
+            // finalColor 是 Unity 帮你算好的"最终颜色"，已经把 light.color × intensity 算完了
             DirectionalLightColors[index] = visibleLight.finalColor;
-            // 前向向量可通过 VisibleLight.localToWorldMatrix 属性获取，它是矩阵的第三列
+            // localToWorldMatrix 的第三列 = Z 轴 = 物体的"前向"
+            // 对方向光来说，前向 = 光线前进的方向
+            // 我们要的"指向光源的方向"（从表面射向光源），所以取负
             DirectionalLightDirections[index] = -visibleLight.localToWorldMatrix.GetColumn(2);
-            // 登记这盏光的阴影数据
+            // 登记这盏光的阴影，返回 Vector3(强度, tile 偏移, 法线偏移)
             DirectionalLightShadowData[index] = _shadows.ReserveDirectionalShadows(visibleLight.light, index);
         }
 

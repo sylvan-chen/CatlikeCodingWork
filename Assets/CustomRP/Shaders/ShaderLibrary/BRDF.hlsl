@@ -1,28 +1,41 @@
 ﻿#ifndef CUSTOM_BRDF_INCLUDED
 #define CUSTOM_BRDF_INCLUDED
 
-#define MIN_REFLECTIVITY 0.04 // 非金属的反射率各不相同，平均约 0.04，我们定义为最小反射率
+#define MIN_REFLECTIVITY 0.04 // 最小反射率。非金属的反射率各不相同，平均约 0.04，我们用它作为定义。
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
 #include "Surface.hlsl"
 
-// BRDF（双向反射分布函数，Bidirectional Reflectance Distribution Function）是光学和计算机图形学中的核心概念。
-// 它用于描述光线照射到物体表面时，如何从入射方向反射到各个出射方向（漫反射和镜面反射的组合结果）。
+/**
+ * 光反射数据。
+ * BRDF（双向反射分布函数，Bidirectional Reflectance Distribution Function）是光学和计算机图形学中的核心概念，
+ * 它用于描述光线照射到物体表面时，如何从入射方向反射到各个出射方向（漫反射和镜面反射的组合结果）。
+ */
 struct BRDF
 {
-    float3 diffuse; // 漫反射
+    float3 diffuse;  // 漫反射
     float3 specular; // 镜面反射 (高光)
     float roughness; // 粗糙度
 };
 
-// 获取漫反射率 (1 - 反射率)，反射率就等于金属表面属性
-// 根据定义的最小反射率，把范围从 0~1 调至 0~0.96
+/**
+ * 漫反射率 (1 - 反射率)
+ * @param metallic 表面金属度
+ * @return 漫反射率
+ */
 float OneMinusReflectivity(float metallic)
 {
+    // 根据定义的最小反射率，把范围从 0~1 调至 0~0.96
     float range = 1.0 - MIN_REFLECTIVITY;
     return range - metallic * range;
 }
 
+/**
+ * 获取 BRDF
+ * @param surface 表面
+ * @param applyAlphaToDiffuse 
+ * @return 光反射数据 BRDF
+ */
 BRDF GetBRDF(Surface surface, bool applyAlphaToDiffuse = false)
 {
     BRDF brdf;

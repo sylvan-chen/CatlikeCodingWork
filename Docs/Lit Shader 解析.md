@@ -16,15 +16,15 @@
   └──────────────────┘       └─────────────────┬─────────────────┘
                                                │
   ┌────────────────────────────────────────────▼───────────────────────────┐
-  │ LitPass.hlsl (片段着色器)                                               │
+  │ LitPass.hlsl (片段着色器)                                              │
   │  1. 构建 Surface (normal, viewDir, color, metallic, smoothness, alpha) │
   │  2. 构建 BRDF (diffuse, specular, roughness)                           │
-  │  3. GetLighting() 遍历所有方向光                                        │
+  │  3. GetLighting() 遍历所有方向光                                       │
   └─────────────────────────────────────┬──────────────────────────────────┘
                                         │
                     ┌───────────────────▼─────────────────────┐
                     │ Lighting.hlsl                           │
-                    │  对每个光源:                             │
+                    │  对每个光源:                            │
                     │                                         │
                     │   IncomingLight = saturate(N·L) * color │
                     │   result = IncomingLight * DirectBRDF   │
@@ -36,7 +36,7 @@
                 │            + diffuse                         │
                 │                                              │
                 │  SpecularStrength (Cook-Torrance D 项):      │
-                │   h = normalize(L + V)  // 半角向量           │
+                │   h = normalize(L + V)  // 半角向量          │
                 │   nh² = (N·h)²                               │
                 │   lh² = (L·h)²                               │
                 │   r²  = roughness²                           │
