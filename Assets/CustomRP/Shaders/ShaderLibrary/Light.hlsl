@@ -32,10 +32,10 @@ int GetDirectionalLightCount()
 }
 
 /**
- * 获取方向阴影数据
- * @param lightIndex 
- * @param shadowData 
- * @return 
+ * 获取方向光阴影数据
+ * @param lightIndex 方向光索引
+ * @param shadowData 全局阴影数据
+ * @return 方向光阴影数据
  */
 DirectionalShadowData GetDirectionalShadowData(int lightIndex, ShadowData shadowData)
 {
@@ -50,8 +50,8 @@ DirectionalShadowData GetDirectionalShadowData(int lightIndex, ShadowData shadow
  * 获取指定方向光照射到表面后的 Light 数据
  * @param index 方向光索引（第几盏方向光）
  * @param surfaceWS 表面
- * @param shadowData 阴影数据
- * @return 
+ * @param shadowData 全局阴影数据
+ * @return 灯光数据
  */
 Light GetDirectionalLight(int index, Surface surfaceWS, ShadowData shadowData)
 {
@@ -59,9 +59,9 @@ Light GetDirectionalLight(int index, Surface surfaceWS, ShadowData shadowData)
     light.color = _DirectionalLightColors[index].rgb;
     // Lighting.cs 传过来的方向已经是入射方向，而不是出射方向
     light.direction = _DirectionalLightDirections[index].xyz;
-    // 通过阴影数据获取这盏光的方向阴影数据
+    // 获取这盏方向光的阴影数据
     DirectionalShadowData directionalShadowData = GetDirectionalShadowData(index, shadowData);
-    // 根据方向阴影数据计算光的衰减值
+    // 用阴影数据计算光线衰减值
     light.attenuation = GetDirectionalShadowAttenuation(directionalShadowData, shadowData, surfaceWS);
     return light;
 }

@@ -1,4 +1,4 @@
-# 【7】方向光阴影 - 级联阴影（Cascaded Shadow Maps）
+# 【8】方向光阴影 - 级联阴影（Cascaded Shadow Maps）
 
 > 本节讲级联阴影：单一 shadow map 的"分辨率 vs 覆盖范围"矛盾怎么解；剔除球、剔除数据怎么算；shader 端怎么选级联。学完后你应该能解释为什么远处的阴影看起来没那么"糊"，以及 `_CascadeCullingSpheres` 和 `_CascadeData` 数组每一项是什么含义。
 

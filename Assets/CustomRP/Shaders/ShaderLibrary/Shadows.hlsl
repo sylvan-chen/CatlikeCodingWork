@@ -19,9 +19,9 @@
 
 #include "Common.hlsl"
 
-// 阴影贴图 (shadow map) 的采样用 TEXTURE2D_SHADOW，采样器用 SAMPLER_CMP
-TEXTURE2D_SHADOW(_DirectionalShadowAtlas);
-#define SHADOW_SAMPLER sampler_linear_clamp_compare
+TEXTURE2D_SHADOW(_DirectionalShadowAtlas); // 阴影贴图 (Shadow map) 专用的纹理类型
+#define SHADOW_SAMPLER sampler_linear_clamp_compare // 阴影贴图专用采样器
+// 用这个采样器进行采样时，返回的是深度比较的结果 (0 或 1)，也就是这个像素上的该物体和这个像素上最近的物体深度比较，返回「是否被遮挡」
 SAMPLER_CMP(SHADOW_SAMPLER);
 
 CBUFFER_START(_CustomShadows)
@@ -33,6 +33,9 @@ CBUFFER_START(_CustomShadows)
     float4 _ShadowDistanceFade;
 CBUFFER_END
 
+/**
+ * 全局阴影数据
+ */
 struct ShadowData
 {
     int cascadeIndex;
@@ -41,13 +44,22 @@ struct ShadowData
 };
 
 /**
- * 衰减后的阴影强度
+ * 获取根据距离衰减的阴影强度
+ * @param distance 距离
+ * @param scale 缩放
+ * @param fade 衰减系数
+ * @return 最终阴影强度
  */
 float FadedShadowStrength(float distance, float scale, float fade)
 {
     return saturate((1.0 - distance * scale) * fade);
 }
 
+/**
+ * 获取表面像素对应的阴影数据
+ * @param surfaceWS 表面
+ * @return 阴影数据
+ */
 ShadowData GetShadowData(Surface surfaceWS)
 {
     ShadowData data;
@@ -93,6 +105,9 @@ ShadowData GetShadowData(Surface surfaceWS)
     return data;
 }
 
+/**
+ * 方向光的阴影数据
+ */
 struct DirectionalShadowData
 {
     float strength;
@@ -100,15 +115,28 @@ struct DirectionalShadowData
     float normalBias;
 };
 
+/**
+ * 采样方向光的阴影贴图
+ * @param positionSTS 采样位置 (Tile UV 坐标)
+ * @return 返回采样结果 (1-完全受光 或 0-完全在阴影中)
+ */
 float SampleDirectionalShadowAtlas(float3 positionSTS)
 {
+    // 深度比较采样，positionSTS 和这个像素上最近的物体深度比较，返回「是否被遮挡」(1-完全受光 或 0-完全在阴影中)
     return SAMPLE_TEXTURE2D_SHADOW(
         _DirectionalShadowAtlas, SHADOW_SAMPLER, positionSTS
     );
 }
 
+/**
+ * 采样方向光的阴影贴图 (经过 PCF)
+ * @param positionSTS 采样位置 (Tile UV 坐标)
+ * @return 返回 PCF 后的结果 (0-1 之间)
+ */
 float FilterDirectionalShadow(float3 positionSTS)
 {
+    // 经过 PCF 过滤后，把硬阴影 (0/1) 变成软阴影 (0~1)。
+    // 直接采样，拿到的要么就是遮挡，要么就是不遮挡；经过 PCF，拿到的是「遮挡了多少」，即光线衰减程度 (1 ~ 0 光线越来越弱)。
     #if defined(DIRECTIONAL_FILTER_SETUP)
     float weights[DIRECTIONAL_FILTER_SAMPLES];
     float2 positions[DIRECTIONAL_FILTER_SAMPLES];
@@ -127,8 +155,13 @@ float FilterDirectionalShadow(float3 positionSTS)
     #endif
 }
 
-
-// 计算阴影数据应用在世界空间 Surface 上的阴影衰减值
+/**
+ * 根据阴影数据，计算光线的衰减值
+ * @param directional 方向光阴影数据
+ * @param global 全局阴影数据
+ * @param surfaceWS 目标表面
+ * @return 衰减值
+ */
 float GetDirectionalShadowAttenuation(DirectionalShadowData directional, ShadowData global, Surface surfaceWS)
 {
     #if !defined(_RECEIVE_SHADOWS)
@@ -158,8 +191,9 @@ float GetDirectionalShadowAttenuation(DirectionalShadowData directional, ShadowD
             FilterDirectionalShadow(positionSTS), shadow, global.cascadeBlend
         );
     }
+
+    // 最终的衰减值 = [1, 采样得到的衰减值] 之间，strength 越大衰减得越多
     return lerp(1.0, shadow, directional.strength);
 }
-
 
 #endif

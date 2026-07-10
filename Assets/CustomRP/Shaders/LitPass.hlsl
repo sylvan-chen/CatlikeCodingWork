@@ -34,7 +34,6 @@ UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
     UNITY_DEFINE_INSTANCED_PROP(float, _Smoothness)
 UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 
-
 struct Attributes
 {
     float3 positionOS : POSITION;
@@ -59,11 +58,10 @@ struct Varyings
     UNITY_VERTEX_INPUT_INSTANCE_ID // GPU Instancing 实例索引
 };
 
-
 Varyings LitPassVertex(Attributes input)
 {
     Varyings output;
-    UNITY_SETUP_INSTANCE_ID(input) // 从输入中提取实例索引，并将其存储在其他 Instancing 宏所依赖的全局静态变量中
+    UNITY_SETUP_INSTANCE_ID(input)             // 从输入中提取实例索引，并将其存储在其他 Instancing 宏所依赖的全局静态变量中
     UNITY_TRANSFER_INSTANCE_ID(input, output); // 索引存在时，复制索引到 output 中
 
     output.positionWS = TransformObjectToWorld(input.positionOS);
@@ -76,7 +74,6 @@ Varyings LitPassVertex(Attributes input)
 
     return output;
 }
-
 
 float4 LitPassFragment(Varyings input) : SV_TARGET
 {
@@ -112,6 +109,5 @@ float4 LitPassFragment(Varyings input) : SV_TARGET
     // 返回最终颜色
     return float4(color, surface.alpha);
 }
-
 
 #endif

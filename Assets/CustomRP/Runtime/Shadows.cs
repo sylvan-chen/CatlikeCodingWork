@@ -60,6 +60,7 @@ namespace CustomRP
         /// <summary> 登记到阴影图集的所有方向光 </summary>
         private readonly ShadowedDirectionalLight[] ShadowedDirectionalLights =
             new ShadowedDirectionalLight[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT];
+        /// <summary> 在方向光的阴影图集上，物体世界空间坐标转换到每个 Tile 范围内像素的 VP 变换矩阵 </summary>
         private static readonly Matrix4x4[] DirectionalShadowMatrices =
             new Matrix4x4[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADES_COUNT];
         private static readonly Vector4[] CascadeCullingSpheres = new Vector4[MAX_CASCADES_COUNT];
@@ -249,7 +250,7 @@ namespace CustomRP
             Vector3 cascadeRatios = _settings.Directional.CascadeRatios;
 
             float cullingFactor = Mathf.Max(0f, 0.8f - _settings.Directional.CascadeFade);
-            // 为每层级联做正交投影，拿到 VP 矩阵
+            // 为每层级联做正交投影，拿到用于绘制 tile 的 VP 矩阵
             for (int cascadeIndex = 0; cascadeIndex < cascadeCount; cascadeIndex++)
             {
                 // 函数内部具体做法：构造一个正交视锥体（一个盒子），让这个盒子刚好包住「相机能看到的，且在阴影距离内的场景」，盒子的朝向就是光照方向。
@@ -260,11 +261,12 @@ namespace CustomRP
                     cascadeRatios, // 级联比例
                     tileSize,
                     light.NearPlaneOffset,
-                    out Matrix4x4 viewMatrix,       // 输出 View 矩阵
-                    out Matrix4x4 projectionMatrix, // 输出 Projection 矩阵
-                    out ShadowSplitData splitData
+                    out Matrix4x4 viewMatrix,       // 输出 View 矩阵（世界空间 -> 相机空间）
+                    out Matrix4x4 projectionMatrix, // 输出 Projection 矩阵（相机空间 -> 裁剪空间）
+                    out ShadowSplitData splitData   // 包含阴影块数据，比如剔除球信息
                 );
 
+                // 设置跨级联混合时，边缘像素的剔除因子
                 splitData.shadowCascadeBlendCullingFactor = cullingFactor;
                 shadowSettings.splitData = splitData;
 
@@ -275,15 +277,19 @@ namespace CustomRP
                 }
 
                 int tileIndex = tileOffset + cascadeIndex; // 该级联所在的 tile
-                // 划定 Tile 视口：把渲染区域限定在图集里属于这盏光的那一块，这样 _context.DrawShadows 画出来的深度只写进这个 tile，不会覆盖别的光的 tile。
+                // 缓存：在方向光的阴影图集上，物体世界空间坐标转换到每个 Tile 范围 ([0, 1]) 内像素的 VP 变换矩阵
                 DirectionalShadowMatrices[tileIndex] = ConvertToAtlasMatrix(
                     projectionMatrix * viewMatrix,
+                    // 设置在 shadow map 上的绘制视口 ([-1, 1])
                     SetTileViewport(tileIndex, split, tileSize),
                     split
                 );
+                // 设置绘制 shadow map 时顶点着色器用的 VP 矩阵
                 _buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
                 _buffer.SetGlobalDepthBias(0, light.SlopeScaleBias);
                 ExecuteBuffer();
+                // 发起绘制 shadow map 的 DrawCall
+                // 每次绘制只会在之前设置的视口范围内（一个 Tile）
                 _context.DrawShadows(ref shadowSettings);
                 _buffer.SetGlobalDepthBias(0f, 0f);
             }
@@ -306,8 +312,12 @@ namespace CustomRP
         }
 
         /// <summary>
-        /// 接收光照矩阵、tile 偏移和分割数，把光照矩阵从世界空间转换到阴影贴图 tile 空间
+        /// 把 VP 矩阵的变换从 (世界空间 -> Atlas UV 空间) 变成 (世界空间 -> Tile UV 空间)
         /// </summary>
+        /// <param name="matrix"> VP 变换矩阵 </param>
+        /// <param name="offset"> Tile 行列偏移 </param>
+        /// <param name="split"> 边分割数 </param>
+        /// <returns>转换后的 VP 矩阵</returns>
         private Matrix4x4 ConvertToAtlasMatrix(Matrix4x4 matrix, Vector2 offset, int split)
         {
             if (SystemInfo.usesReversedZBuffer)
@@ -335,6 +345,10 @@ namespace CustomRP
             return matrix;
         }
 
+        /// <summary>
+        /// 设置在图集上的绘制视口
+        /// </summary>
+        /// <returns>该视口对应 tile 的行列偏移 (col, row)</returns>
         private Vector2 SetTileViewport(int tileIndex, int split, float tileSize)
         {
             Vector2 offset = new Vector2(tileIndex % split, tileIndex / split);

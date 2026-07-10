@@ -1,4 +1,4 @@
-# 【5】方向光（Directional Lights）
+# 【6】方向光（Directional Lights）
 
 > 本节教你把"一盏方向光怎么把光照到物体上"这件事，从 C# 到 Shader 完整打通。学完后你应该能独立写出一套支持多盏方向光、含 BRDF 的最小光照系统。
 

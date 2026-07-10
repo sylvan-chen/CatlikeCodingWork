@@ -1,4 +1,4 @@
-# 【8】方向光阴影 - 阴影质量（Shadow Quality）
+# 【9】方向光阴影 - 阴影质量（Shadow Quality）
 
 > 本节讲阴影的"质量"问题：阴影斑点（acne）三种解决方案、距离衰减、级联渐隐、PCF 软化、级联混合、Pancaking、Culling Bias。这些是 shader 上看到的"细节"，但每一个都在 CPU 端有对应的"准备数据"。
 
