@@ -149,10 +149,10 @@ int tileSize = atlasSize / split;
 ### tile 索引 → tile 在 atlas 中的位置
 
 ```csharp
-// Shadows.cs:264
+// Shadows.cs
 int tileIndex = tileOffset + cascadeIndex;  // 该级联所在的 tile
 
-// Shadows.cs:325-330
+// Shadows.cs
 private Vector2 SetTileViewport(int index, int split, float tileSize)
 {
     Vector2 offset = new Vector2(index % split, index / split);  // 行列坐标
@@ -208,7 +208,7 @@ M_new.xw = 0.5 * M.xw + 0.5 * M.ww
 对应代码：
 
 ```csharp
-// Shadows.cs:318-321
+// Shadows.cs
 matrix.m20 = 0.5f * (matrix.m20 + matrix.m30);  // z 列
 matrix.m21 = 0.5f * (matrix.m21 + matrix.m31);
 matrix.m22 = 0.5f * (matrix.m22 + matrix.m32);
@@ -225,7 +225,7 @@ matrix.m23 = 0.5f * (matrix.m23 + matrix.m33);
 | `m30, m31, m32, m33` | 第四列（w 输出） | 算 `out.w` |
 
 ```csharp
-// Shadows.cs:289-296 (第一行：算 out.x 列 = 0.5 * 原 out.x + 0.5 * 原 out.w)
+// Shadows.cs (第一行：算 out.x 列 = 0.5 * 原 out.x + 0.5 * 原 out.w)
 matrix.m00 = (0.5f * (matrix.m00 + matrix.m30) + offset.x * matrix.m30) * scale;
 matrix.m01 = (0.5f * (matrix.m01 + matrix.m31) + offset.x * matrix.m31) * scale;
 matrix.m02 = (0.5f * (matrix.m02 + matrix.m32) + offset.x * matrix.m32) * scale;
@@ -236,7 +236,7 @@ matrix.m03 = (0.5f * (matrix.m03 + matrix.m33) + offset.x * matrix.m33) * scale;
 
 ### 5.3 多 tile 时还要平移 + 缩放
 
-如果 split=2，每个 tile 只占 atlas 的 1/4。tile (offsetX, offsetY) 占 atlas 的 [offsetX/2, offsetX/2 + 0.5] × [offsetY/2, offsetY/2 + 0.5]：
+如果 split=2，每个 tile 只占 atlas 的 1/4。`tile (offsetX, offsetY)` 占 atlas 的 `[offsetX/2, offsetX/2 + 0.5] × [offsetY/2, offsetY/2 + 0.5]`：
 
 ```
 tile (0, 0) 占 [0, 0.5] × [0, 0.5]
@@ -264,7 +264,7 @@ matrix.m00 = (0.5f * (matrix.m00 + matrix.m30) + offset.x * matrix.m30) * scale;
 ### 5.4 Reverse-Z：GPU 平台差异
 
 ```csharp
-// Shadows.cs:300-306
+// Shadows.cs
 if (SystemInfo.usesReversedZBuffer)
 {
     matrix.m20 = -matrix.m20;

@@ -6,43 +6,49 @@
 
 ## 一、为什么要级联？
 
-方向光影响场景里所有方向的物体，所以它的 shadow map 必须覆盖一个很大的范围。假设最大阴影距离 100m，用 1024×1024 的 shadow map：
+方向光影响场景里所有方向的物体，所以它的 shadow map 必须覆盖一个很大的范围。假设正交投影覆盖 100m x 100m 的范围（[-50, +50]），且 shadow map 尺寸为 1024x1024，那么：
 
 ```
 1 texel ≈ 100m / 1024 ≈ 10cm
 ```
 
-- **人物在 2m 外**：脚下的阴影 30cm，屏幕上有几十个像素 → shadow map 里只有 **3 个 texel** 描述 → 锯齿严重
-- **房子在 80m 外**：屏幕上 5 个像素 → shadow map 里用了 **100 个 texel** → 严重浪费
+这意味着 shadow map 上每个 texel 代表世界空间中 10cmx10cm 的范围。
 
-这就是分辨率矛盾：
+由于正交投影没有近大远小的特性，无论远近，物体在阴影贴图上占用的 texel 只和物体本身的大小有关，那么会出现这样的情况：
 
-```
-覆盖范围大 → 每个 texel 世界空间大 → 近处细节糊
-覆盖范围小 → 远处物体根本不在 shadow map 里 → 没阴影
-```
+- **小物体在 2m 的距离**：比如一个人，本身渲染到屏幕上有几十个像素 → 但 shadow map 里只有 **3 个 texel** 描述 → 锯齿严重
+- **大物体在 80m 的距离**：比如一栋房子，本身渲染到屏幕上可能就 5 个像素 → shadow map 里用了 **100 个 texel** → 严重浪费
 
-**级联**就是把这个"又大又糊"的 shadow map 拆成几张：
+**级联**就是把 shadow map 按距离拆成几段，每段用一个独立的正交盒子：
 
-```
-┌─────────────────────────────────────┐
-│  Cascade 0: 0-10m     1024×1024     │  ← 1 texel ≈ 1cm, 人物脚下超清
-├─────────────────────────────────────┤
-│  Cascade 1: 10-25m    1024×1024     │  ← 1 texel ≈ 2.5cm, 中距离清晰
-├─────────────────────────────────────┤
-│  Cascade 2: 25-50m    1024×1024     │  ← 1 texel ≈ 5cm
-├─────────────────────────────────────┤
-│  Cascade 3: 50-100m   1024×1024     │  ← 1 texel ≈ 10cm, 远距离够用
-└─────────────────────────────────────┘
+```plaintext
+          Cascade 0      Cascade 1      Cascade 2      Cascade 3
+          (0-10m)        (10-25m)       (25-50m)       (50-100m)
+         ┌───────┐     ┌─────────┐    ┌─────────┐   ┌─────────────┐
+         │ □□□□□ │     │  □□□□□  │    │ □□□□□□□ │   │ □□□□□□□□□□□ │
+         │ □□□□□ │     │  □□□□□  │    │ □□□□□□□ │   │ □□□□□□□□□□□ │
+         └───────┘     └─────────┘    └─────────┘   └─────────────┘
+         xy ≈ 5m        xy ≈ 15m       xy ≈ 30m        xy ≈ 60m
+         ↑              ↑              ↑                ↑
+         横向小         横向中         横向大           横向超大
 ```
 
-每张图分辨率相同（1024），但覆盖范围不同 → **近处 1cm/texel（清晰），远处 10cm/texel（够用）**。
+也就是说，原本用一整张贴图描述的 shadow map，现在用 4 张贴图来描述。距离越近的地方，就用更小的正交盒子来投影。于是，假如同样的 1024x1024 贴图，正交盒子（xy 尺寸）越小，那么一个 texel 对应的空间范围就越小，也就越精确。
+
+如果 atlas 是 2048×2048，切成 2×2 = 4 tile，每个 tile = 1024×1024：
+
+| 级联      | xy 范围    | tile 分辨率 | texel 大小 |
+| --------- | ---------- | ----------- | ---------- |
+| Cascade 0 | ~5m x 5m   | 1024        | ~5mm       |
+| Cascade 1 | ~15m x 15m | 1024        | ~1.5cm     |
+| Cascade 2 | ~30m x 30m | 1024        | ~3cm       |
+| Cascade 3 | ~60m x 60m | 1024        | ~6cm       |
 
 ---
 
 ## 二、级联比例（CascadeRatios）
 
-`ShadowSettings.cs:46-57`：
+`ShadowSettings.cs`：
 
 ```csharp
 [Range(0f, 1f)] public float CascadeRatio1;  // 0.1
@@ -55,12 +61,12 @@ public Vector3 CascadeRatios => new Vector3(CascadeRatio1, CascadeRatio2, Cascad
 这 3 个比例把 `[0, MaxDistance]` 分成 4 段（4 个级联）：
 
 ```
-0  CascadeRatio1×MaxDistance  CascadeRatio2×MaxDistance  CascadeRatio3×MaxDistance  MaxDistance
-|←──  Cascade 0  ──→|<──  Cascade 1  ──→|<────  Cascade 2  ────→|<────  Cascade 3  ────→|
-   0-10% (0-10m)         10-25% (10-25m)     25-50% (25-50m)        50-100% (50-100m)
+0m            ratio1x100m             ratio2x100m             ratio3x100m                  100m
+|<───  Cascade 0  ───>|<───  Cascade 1  ───>|<────  Cascade 2  ────>|<────  Cascade 3  ────>|
+   0-10% (0-10m)          10-25% (10-25m)        25-50% (25-50m)         50-100% (50-100m)
 ```
 
-`CascadeRatios` 是个 `Vector3`，传给 Unity 的 `ComputeDirectionalShadowMatricesAndCullingPrimitives`，由它内部去算每个级联覆盖的距离区间。
+Unity 的 `ComputeDirectionalShadowMatricesAndCullingPrimitives` 方法接收 `CascadeRatios`（一个 Vector3 值），由它内部去算每个级联覆盖的距离区间。
 
 ---
 
@@ -69,13 +75,13 @@ public Vector3 CascadeRatios => new Vector3(CascadeRatio1, CascadeRatio2, Cascad
 每个级联都有自己的 view + projection 矩阵（光源的视锥体只覆盖这个级联的距离段）。Unity 帮你构造这个盒子：
 
 ```csharp
-// Shadows.cs:243-253
+// Shadows.cs
 _cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(
     light.VisibleLightIndex,
     cascadeIndex,    // 当前级联（0/1/2/3）
     cascadeCount,    // 总级联数
     cascadeRatios,   // 级联比例
-    tileSize,        // 这个 tile 的边长
+    tileSize,        // tile 分辨率
     light.NearPlaneOffset,
     out Matrix4x4 viewMatrix,
     out Matrix4x4 projectionMatrix,
@@ -91,26 +97,26 @@ _cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(
 
 ---
 
-## 四、剔除球（Culling Sphere）
+## 四、级联剔除球（Culling Sphere）
 
-每个级联有自己的覆盖范围（一个长方体），但**shader 端需要一个简单的"我落在不在这个级联里"的判断**——长方体判断太复杂。
+每个级联有自己的覆盖范围（一个长方体），但 **GPU 片元着色器端需要一个简单的"我落在不在这个级联里"的判断**——长方体判断太复杂。
 
-教程用**球**来近似长方体：把长方体"塞进"一个刚好包住的球。球只有 4 个数（中心 xyz + 半径 w），shader 判断 4D 点积平方 vs 半径平方，开销极低。
+因此通常是用**球**来近似长方体：把长方体"塞进"一个刚好包住的球。球只有 4 个数（中心 xyz + 半径 w），shader 判断 4D 点积平方 vs 半径平方，开销极低。
 
 ```
          ┌─────────────┐
        ╱             ╱ │
-     ╱   长方体     ╱   │
+     ╱   长方体    ╱   │
    ╱             ╱     │
   ┌─────────────┐      │
   │             │      │
   │             │      │  ← 球比长方体大一点，但判断简单
-  │             │      │
-  │             │    ╱
-  │             │  ╱
-  └─────────────┘╱
-       ╲___________╱
-        剔除球（半径等于长方体对角线的一半）
+  │             │     ╱
+  │             │   ╱
+  │             │ ╱
+  └─────────────┘
+  ╲____________╱
+     剔除球（半径等于长方体对角线的一半）
 ```
 
 ### 4.1 CPU 端的剔除球
@@ -120,17 +126,17 @@ _cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(
 ### 4.2 Shader 端的剔除球
 
 ```hlsl
-// Shadows.hlsl:14-18
+// Shadows.hlsl
 CBUFFER_START(_CustomShadows)
     int _CascadeCount;
     float4 _CascadeCullingSpheres[MAX_CASCADES_COUNT];  // .xyz = 球心, .w = 半径²
     ...
 ```
 
-**为什么 w 是半径² 而不是半径？**因为 shader 里要判断"点到球心距离² < 半径²"，把平方提前算好，shader 端**免去一次开方**：
+**为什么 w 是半径的平方？**因为 shader 里要判断"点到球心距离平方 < 半径平方"，把平方提前算好，shader 端**免去一次开方计算**：
 
 ```hlsl
-// Shadows.hlsl:59-61
+// Shadows.hlsl
 float4 sphere = _CascadeCullingSpheres[i];
 float distanceSqr = DistanceSquared(surfaceWS.position, sphere.xyz);
 if (distanceSqr < sphere.w)  // 已经是平方 vs 平方
@@ -139,7 +145,7 @@ if (distanceSqr < sphere.w)  // 已经是平方 vs 平方
 对应 C# 代码：
 
 ```csharp
-// Shadows.cs:282-293
+// Shadows.cs
 private void SetCascadeData(int index, Vector4 cullingSphere, float tileSize)
 {
     float texelSize = 2f * cullingSphere.w / tileSize;
@@ -160,7 +166,7 @@ private void SetCascadeData(int index, Vector4 cullingSphere, float tileSize)
 `CascadeData[i]` 是个 `Vector4`，每个分量都有用：
 
 ```csharp
-// Shadows.cs:292
+// Shadows.cs
 CascadeData[index] = new Vector4(1f / cullingSphere.w, filterSize * 1.4142136f);
 ```
 
@@ -174,7 +180,7 @@ CascadeData[index] = new Vector4(1f / cullingSphere.w, filterSize * 1.4142136f);
 shader 里要做 `distanceSqr / radiusSqr` 算距离百分比（用于 cascade fade），写成 `distanceSqr * (1/radiusSqr)` 比 `distanceSqr / radiusSqr` 快：
 
 ```hlsl
-// Shadows.hlsl:63-65
+// Shadows.hlsl
 float fade = FadedShadowStrength(
     distanceSqr, _CascadeData[i].x, _ShadowDistanceFade.z
 );
@@ -189,14 +195,14 @@ float fade = FadedShadowStrength(
 
 `texelSize = 2 × 球半径 / tile 边长`——即"一个 shadow map 像素在世界空间里多大"。
 
-`× √2` 是最坏情况的安全系数：法线方向沿 texel 对角线时也能逃出当前 texel（详见【8】节）。
+`× √2` 是最坏情况的安全系数：法线方向沿 texel 对角线时也能逃出当前 texel（详见【9】阴影质量）。
 
 ---
 
 ## 六、shader 端怎么选级联：GetShadowData
 
 ```hlsl
-// Shadows.hlsl:51-94
+// Shadows.hlsl
 ShadowData GetShadowData(Surface surfaceWS)
 {
     ShadowData data;
@@ -262,7 +268,7 @@ struct ShadowData
 };
 ```
 
-`cascadeBlend` 用于【8】节 cascade blending（让两个相邻级联之间的过渡更平滑）。
+`cascadeBlend` 用于【9】节 cascade blending（让两个相邻级联之间的过渡更平滑）。
 
 ### 6.3 与光无关：所有方向光共用一份 ShadowData
 
@@ -292,39 +298,40 @@ if (index == 0)
 └────────────────────────────────────┬───────────────────────────────────────┘
                                      ▼
 ┌────────────────────────────────────────────────────────────────────────────┐
-│ RenderDirectionalShadow(i, split, tileSize) (对每盏光、每个级联调用)         │
-│   ├─ ComputeDirectionalShadowMatricesAndCullingPrimitives(...)              │
-│   │   → view, proj, splitData (含 cullingSphere)                            │
-│   ├─ if (i == 0) SetCascadeData(cascadeIndex, cullingSphere, tileSize)      │
+│ RenderDirectionalShadow(i, split, tileSize) (对每盏光、每个级联调用)       │
+│   ├─ ComputeDirectionalShadowMatricesAndCullingPrimitives(...)             │
+│   │   → view, proj, splitData (含 cullingSphere)                           │
+│   ├─ if (i == 0) SetCascadeData(cascadeIndex, cullingSphere, tileSize)     │
 │   │   → CascadeCullingSpheres[index] = sphere (w²已存)                     │
-│   │   → CascadeData[index] = (1/w², texelSize × √2)                       │
-│   ├─ tileIndex = lightIndex × cascadeCount + cascadeIndex                   │
-│   ├─ DirectionalShadowMatrices[tileIndex] = ConvertToAtlasMatrix(...)        │
-│   ├─ SetViewProjectionMatrices(view, proj) + SetGlobalDepthBias + DrawShadows│
+│   │   → CascadeData[index] = (1/w², texelSize × √2)                        │
+│   ├─ tileIndex = lightIndex × cascadeCount + cascadeIndex                  │
+│   ├─ DirectionalShadowMatrices[tileIndex] = ConvertToAtlasMatrix(...)      │
+│   ├─ SetViewProjectionMatrices(view, proj)                                 │
+│   │          + SetGlobalDepthBias + DrawShadows                            │
 └────────────────────────────────────┬───────────────────────────────────────┘
                                      ▼
 ┌────────────────────────────────────────────────────────────────────────────┐
-│ GPU 端                                                                       │
-│   cbuffer _CustomShadows {                                                  │
-│       int _CascadeCount;                                                    │
-│       float4 _CascadeCullingSpheres[4];   // 球心 + 半径²                   │
-│       float4 _CascadeData[4];             // 1/半径² + texelSize×√2       │
-│       float4x4 _DirectionalShadowMatrices[16]; // 4 光 × 4 级联             │
+│ GPU 端                                                                     │
+│   cbuffer _CustomShadows {                                                 │
+│       int _CascadeCount;                                                   │
+│       float4 _CascadeCullingSpheres[4];   // 球心 + 半径²                  │
+│       float4 _CascadeData[4];             // 1/半径² + texelSize×√2        │
+│       float4x4 _DirectionalShadowMatrices[16]; // 4 光 × 4 级联            │
 │       float4 _ShadowDistanceFade;                                          │
-│   }                                                                          │
+│   }                                                                        │
 └────────────────────────────────────┬───────────────────────────────────────┘
                                      ▼
 ┌────────────────────────────────────────────────────────────────────────────┐
 │ LitPassFragment → GetLighting → GetShadowData(surfaceWS)                   │
-│   → 遍历 4 个级联球, 找第一个包住的 → cascadeIndex                          │
-│   → ShadowData.cascadeIndex = i                                             │
+│   → 遍历 4 个级联球, 找第一个包住的 → cascadeIndex                         │
+│   → ShadowData.cascadeIndex = i                                            │
 └────────────────────────────────────┬───────────────────────────────────────┘
                                      ▼
 ┌────────────────────────────────────────────────────────────────────────────┐
-│ GetDirectionalShadowAttenuation(directional, global, surface)               │
-│   → mul(_DirectionalShadowMatrices[directional.tileIndex], worldPos)        │
-│   → 拿到 (uv, depth) in tile 空间                                           │
-│   → SAMPLE_TEXTURE2D_SHADOW 比较深度 → 0~1                                  │
+│ GetDirectionalShadowAttenuation(directional, global, surface)              │
+│   → mul(_DirectionalShadowMatrices[directional.tileIndex], worldPos)       │
+│   → 拿到 (uv, depth) in tile 空间                                          │
+│   → SAMPLE_TEXTURE2D_SHADOW 比较深度 → 0~1                                 │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -382,4 +389,4 @@ int GetCascadeIndex(float3 worldPos)
 - 剔除球：快速判断"我在哪个级联里"
 - 级联数据：texelSize 和距离倒数
 
-下一节【8】会讲怎么让阴影**好看**——消灭 acne（深度 bias + 法线 bias）、让级联之间平滑过渡（cascade blending）、加 PCF 软化阴影边缘。
+下一节【9】会讲怎么让阴影**好看**——消灭 acne（深度 bias + 法线 bias）、让级联之间平滑过渡（cascade blending）、加 PCF 软化阴影边缘。

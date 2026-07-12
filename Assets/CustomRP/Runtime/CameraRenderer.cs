@@ -114,7 +114,7 @@ namespace CustomRP
         {
             if (_camera.TryGetCullingParameters(out ScriptableCullingParameters p))
             {
-                // 最终阴影距离取最大阴影距离与相机远裁剪平面的最小值
+                // 设置最大阴影投射距离，与相机远裁剪平面距离相比取最小值
                 p.shadowDistance = Mathf.Min(maxShadowDistance, _camera.farClipPlane);
                 _cullingResults = _context.Cull(ref p);
                 return true;

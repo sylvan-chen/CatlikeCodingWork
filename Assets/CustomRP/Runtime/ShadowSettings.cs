@@ -58,10 +58,10 @@ namespace CustomRP
         }
 
         [SerializeField, Min(0.001f)]
-        [Tooltip("阴影最大距离")]
+        [Tooltip("阴影最大投射距离")]
         private float _maxDistance = 100f;
         [SerializeField, Range(0.001f, 1f)]
-        [Tooltip("阴影距离衰减")]
+        [Tooltip("阴影距离衰减 (接近最大投射距离是做渐变消失，而不是一刀切)")]
         private float _distanceFade = 0.1f;
         [SerializeField]
         [Tooltip("方向阴影设置")]

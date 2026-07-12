@@ -77,7 +77,7 @@ float3 GetLighting(Surface surface, BRDF brdf, Light light)
  */
 float3 GetLighting(Surface surfaceWS, BRDF brdf)
 {
-    // 获取阴影数据
+    // 获取全局阴影数据
     ShadowData shadowData = GetShadowData(surfaceWS);
     float3 color = 0.0;
     // 累加每盏光对颜色的贡献

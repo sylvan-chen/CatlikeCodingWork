@@ -27,11 +27,14 @@ namespace CustomRP
     /// </summary>
     public class Shadows
     {
-        /// <summary> 应用阴影的方向光 </summary>
+        /// <summary> 阴影需要的方向光数据 </summary>
         public struct ShadowedDirectionalLight
         {
+            // 可见光索引
             public int VisibleLightIndex;
+            // 基于斜率的深度偏移 (用于优化阴影斑点)
             public float SlopeScaleBias;
+            // 近平面偏移
             public float NearPlaneOffset;
         }
 
@@ -63,7 +66,9 @@ namespace CustomRP
         /// <summary> 在方向光的阴影图集上，物体世界空间坐标转换到每个 Tile 范围内像素的 VP 变换矩阵 </summary>
         private static readonly Matrix4x4[] DirectionalShadowMatrices =
             new Matrix4x4[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADES_COUNT];
+        /// <summary> 级联剔除球 Vector4(.xyz = 球心, .w = 半径^2) </summary>
         private static readonly Vector4[] CascadeCullingSpheres = new Vector4[MAX_CASCADES_COUNT];
+        /// <summary> 级联相关数据 </summary>
         private static readonly Vector4[] CascadeData = new Vector4[MAX_CASCADES_COUNT];
 
         private static string[] DirectionalFilterKeywords =
@@ -103,9 +108,9 @@ namespace CustomRP
         }
 
         /// <summary>
-        /// 登记光照：在阴影图集中登记要应用的灯光
+        /// 登记光照：登记要应用阴影的方向光
         /// </summary>
-        /// <returns>这盏灯应用阴影贴图需要的数据: Vector2(阴影强度, Shadow Map 偏移量, 阴影法线偏移)</returns>
+        /// <returns>这盏灯的阴影数据: Vector2(阴影强度, 在阴影图集上的偏移, 阴影采样点法线偏移)</returns>
         public Vector3 ReserveDirectionalShadows(Light light, int visibleLightIndex)
         {
             if (_shadowedDirectionalLightCount < MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT
@@ -113,7 +118,7 @@ namespace CustomRP
                 && light.shadows != LightShadows.None
                 // 阴影强度要大于 0
                 && light.shadowStrength > 0f
-                // 剔除结果中阴影的包围盒是有效的
+                // 剔除结果中阴影投射包围盒是有效的
                 && _cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds _))
             {
                 // 记录可应用阴影的方向光数据
@@ -124,11 +129,11 @@ namespace CustomRP
                     NearPlaneOffset = light.shadowNearPlane,
                 };
 
-                // 返回应用贴图需要的数据
+                // 返回方向光的阴影数据
                 return new Vector3(
-                    light.shadowStrength,
-                    _settings.Directional.CascadeCount * _shadowedDirectionalLightCount++,
-                    light.shadowNormalBias
+                    light.shadowStrength,                                                  // 光照的阴影强度
+                    _settings.Directional.CascadeCount * _shadowedDirectionalLightCount++, // 在阴影图集上的偏移
+                    light.shadowNormalBias                                                 // 阴影采样点法线偏移
                 );
             }
 
@@ -253,24 +258,24 @@ namespace CustomRP
             // 为每层级联做正交投影，拿到用于绘制 tile 的 VP 矩阵
             for (int cascadeIndex = 0; cascadeIndex < cascadeCount; cascadeIndex++)
             {
-                // 函数内部具体做法：构造一个正交视锥体（一个盒子），让这个盒子刚好包住「相机能看到的，且在阴影距离内的场景」，盒子的朝向就是光照方向。
+                // 函数内部具体做法：构造一个正交视锥体（一个盒子），让这个盒子刚好包住「相机能看到的，且在阴影最大投射距离内的场景」，盒子的朝向就是光照方向。
                 _cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(
                     light.VisibleLightIndex,
-                    cascadeIndex,  // 级联索引
-                    cascadeCount,  // 级联数量
-                    cascadeRatios, // 级联比例
-                    tileSize,
-                    light.NearPlaneOffset,
+                    cascadeIndex,                   // 级联索引
+                    cascadeCount,                   // 级联数量
+                    cascadeRatios,                  // 级联比例
+                    tileSize,                       // Tile 分辨率
+                    light.NearPlaneOffset,          // 近平面偏移
                     out Matrix4x4 viewMatrix,       // 输出 View 矩阵（世界空间 -> 相机空间）
                     out Matrix4x4 projectionMatrix, // 输出 Projection 矩阵（相机空间 -> 裁剪空间）
-                    out ShadowSplitData splitData   // 包含阴影块数据，比如剔除球信息
+                    out ShadowSplitData splitData   // 包含这个级联的数据，包括剔除球信息
                 );
 
                 // 设置跨级联混合时，边缘像素的剔除因子
                 splitData.shadowCascadeBlendCullingFactor = cullingFactor;
                 shadowSettings.splitData = splitData;
 
-                // 只需要记录第一个光源的级联数据，所有光源的级联都是等效的
+                // 只需要记录第一个光源的级联数据，因为级联布局跟光源无关，对于所有光都是等效的
                 if (index == 0)
                 {
                     SetCascadeData(cascadeIndex, splitData.cullingSphere, tileSize);
@@ -300,14 +305,18 @@ namespace CustomRP
         /// </summary>
         private void SetCascadeData(int index, Vector4 cullingSphere, float tileSize)
         {
-            // 级联剔除球数据
+            // 纹素大小
             float texelSize = 2f * cullingSphere.w / tileSize;
+            // 把球稍微缩小一点，避免边缘出现 acne，Filter 越大缩得越多
             float filterSize = texelSize * ((float)_settings.Directional.Filter + 1f);
             cullingSphere.w -= filterSize;
-            cullingSphere.w *= cullingSphere.w; // 直接存储平方半径，方便在着色器中计算一个片段是否在球体内部（比较球体中心到片段的平方距离与球体的平方半径）
+            // 直接存储平方半径，方便在着色器计算 (判断一个片段是否在球体内部，需要比较球体中心到片段的平方距离与球体的平方半径)
+            cullingSphere.w *= cullingSphere.w;
+            // 存储级联剔除球数据
             CascadeCullingSpheres[index] = cullingSphere;
 
-            // 级联数据
+            // 级联需要的其他数据都塞到 CascadeData 里 Vector2(剔除球半径平方的倒数, 纹素大小)
+            // 纹素大小 x √2 以应对最坏情况下要沿着正方形对角线偏移
             CascadeData[index] = new Vector4(1f / cullingSphere.w, filterSize * 1.4142136f);
         }
 

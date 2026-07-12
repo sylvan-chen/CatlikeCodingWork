@@ -6,7 +6,7 @@
 
 ## 一、Shadow Acne 复盘
 
-先快速回顾（详见前面会话和【6】节）：
+先快速回顾：
 
 shadow map 用**离散的 texel 描述连续的深度场**，每个 texel 只能存一个数字。Receiver 端的 `depth_P` 和 `depth_S` 都是浮点数，**会相差几个 ULP**：
 
@@ -27,13 +27,13 @@ depth_S 算出来 = 4.9999997f   ← rasterizer 写深度时四舍五入
 | 方案 | 怎么改 | 副作用 | 用不用 |
 |------|--------|--------|--------|
 | Constant depth bias | shadow map 所有深度 + ε | 全局 Peter Pan（阴影缩小 ε） | ❌ 不用 |
-| Slope-scale depth bias | 深度 + ε + slope×k | 难调到合适的 k | ❌ 不用 |
+| Slope-scale depth bias | 深度 + ε + slope*k | 难调到合适的 k | ❌ 不用 |
 | Normal bias | **不改 shadow map**，挪查询点 | 边缘错位 ~texelSize | ✅ 用这个 |
 
 ### 2.1 Slope-Scale Bias（不开，但保留）
 
 ```csharp
-// Shadows.cs:272
+// Shadows.cs
 _buffer.SetGlobalDepthBias(0f, light.SlopeScaleBias);
 ExecuteBuffer();
 _context.DrawShadows(ref shadowSettings);
@@ -53,7 +53,7 @@ _buffer.SetGlobalDepthBias(0f, 0f);
 shader 端代码：
 
 ```hlsl
-// Shadows.hlsl:143-147
+// Shadows.hlsl
 float3 normalBias = surfaceWS.normal * (directional.normalBias * _CascadeData[global.cascadeIndex].y);
 float3 positionSTS = mul(
     _DirectionalShadowMatrices[directional.tileIndex],
@@ -119,8 +119,8 @@ texelSize = 一格 shadow map 像素在世界空间里有多大
         ┌─────────────┐
        ╱  ┌─────────┐  ╲
       ╱   │ tile    │   ╲      tile 边长 W = 2 × R / pixel
-     ╱    │ 像素     │    ╲
-    ╱     │ 数 N     │     ╲
+     ╱    │ 像素    │    ╲
+    ╱     │ 数 N    │     ╲
    │      │         │      │
    │      │         │      │     1 texel = 2R / N
    ╲      │         │      ╱
@@ -175,7 +175,7 @@ shadow map 的 texel 是**正方形**。沿法线推多少才能保证"逃出当
 ## 四、Max Distance Fade（远处渐隐）
 
 ```csharp
-// Shadows.cs:214-221
+// Shadows.cs
 new Vector4(
     1f / _settings.MaxDistance,
     1f / _settings.DistanceFade,
@@ -250,7 +250,7 @@ if (distanceSqr < sphere.w)  // 落在某个级联球内
 - 越靠近球心 → fade 越接近 1
 
 ```csharp
-// Shadows.cs:282-293
+// Shadows.cs
 private void SetCascadeData(int index, Vector4 cullingSphere, float tileSize)
 {
     float texelSize = 2f * cullingSphere.w / tileSize;

@@ -6,9 +6,13 @@
 #include "Shadows.hlsl"
 
 CBUFFER_START(_CustomLight)
+    // 方向光数量
     int _DirectionalLightCount;
+    // 方向光颜色
     float4 _DirectionalLightColors[MAX_DIRECTIONAL_LIGHT_COUNT];
+    // 方向光入射方向
     float4 _DirectionalLightDirections[MAX_DIRECTIONAL_LIGHT_COUNT];
+    // 方向光的阴影数据
     float4 _DirectionalLightShadowData[MAX_DIRECTIONAL_LIGHT_COUNT];
 CBUFFER_END
 
@@ -32,7 +36,7 @@ int GetDirectionalLightCount()
 }
 
 /**
- * 获取方向光阴影数据
+ * 获取方向光的阴影配置数据
  * @param lightIndex 方向光索引
  * @param shadowData 全局阴影数据
  * @return 方向光阴影数据
@@ -42,7 +46,7 @@ DirectionalShadowData GetDirectionalShadowData(int lightIndex, ShadowData shadow
     DirectionalShadowData data;
     data.strength = _DirectionalLightShadowData[lightIndex].x * shadowData.strength;
     data.tileIndex = _DirectionalLightShadowData[lightIndex].y + shadowData.cascadeIndex;
-    data.normalBias = _DirectionalLightColors[lightIndex].z;
+    data.normalBias = _DirectionalLightShadowData[lightIndex].z;
     return data;
 }
 

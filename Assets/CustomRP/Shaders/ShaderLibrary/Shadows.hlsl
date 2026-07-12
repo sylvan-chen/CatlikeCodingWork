@@ -33,20 +33,25 @@ CBUFFER_START(_CustomShadows)
     float4 _ShadowDistanceFade;
 CBUFFER_END
 
+// ========== 获取全局阴影数据 GetShadowData() ==========
+
 /**
  * 全局阴影数据
  */
 struct ShadowData
 {
+    // 级联索引
     int cascadeIndex;
+    // 级联混合
     float cascadeBlend;
+    // 阴影强度
     float strength;
 };
 
 /**
  * 获取根据距离衰减的阴影强度
  * @param distance 距离
- * @param scale 缩放
+ * @param scale 相对于最大阴影距离的比例
  * @param fade 衰减系数
  * @return 最终阴影强度
  */
@@ -56,16 +61,18 @@ float FadedShadowStrength(float distance, float scale, float fade)
 }
 
 /**
- * 获取表面像素对应的阴影数据
+ * 获取表面像素对应的全局阴影数据
  * @param surfaceWS 表面
- * @return 阴影数据
+ * @return 全局阴影数据
  */
 ShadowData GetShadowData(Surface surfaceWS)
 {
     ShadowData data;
     data.cascadeBlend = 1.0;
+    // 计算全局的阴影强度 (到相机的距离, 1/MaxDistance, 1/DistanceFade)
     data.strength = FadedShadowStrength(surfaceWS.depth, _ShadowDistanceFade.x, _ShadowDistanceFade.y);
     int i;
+    // 遍历所有级联，找到第一个包住这个点的级联
     for (i = 0; i < _CascadeCount; i++)
     {
         float4 sphere = _CascadeCullingSpheres[i];
@@ -77,42 +84,52 @@ ShadowData GetShadowData(Surface surfaceWS)
             );
             if (i == _CascadeCount - 1)
             {
+                // 最后一个级联：再乘一个内部 fade
                 data.strength *= fade;
             }
             else
             {
+                // 其他级联：用 fade 当 blend 系数
                 data.cascadeBlend = fade;
             }
             break;
         }
     }
 
-    // 如果超出最后一个级联，那么完全不采样阴影，强度设为 0
+    // 如果超出最后一个级联，那么强度设为 0，完全不采样阴影
     if (i == _CascadeCount)
     {
         data.strength = 0.0;
     }
+
     #if defined(_CASCADE_BLEND_DITHER)
     else if (data.cascadeBlend < surfaceWS.dither)
     {
         i += 1;
     }
     #endif
+
     #if !defined(_CASCADE_BLEND_SOFT)
     data.cascadeBlend = 1.0;
     #endif
+
+    // 记录这个点对应的级联
     data.cascadeIndex = i;
     return data;
 }
+
+// ================================================
+
+// ================ 方向光衰减值计算 ================
 
 /**
  * 方向光的阴影数据
  */
 struct DirectionalShadowData
 {
-    float strength;
-    int tileIndex;
-    float normalBias;
+    float strength;   // 阴影强度
+    int tileIndex;    // tile 索引
+    float normalBias; // 阴影采样法线偏移
 };
 
 /**
@@ -156,7 +173,7 @@ float FilterDirectionalShadow(float3 positionSTS)
 }
 
 /**
- * 根据阴影数据，计算光线的衰减值
+ * 计算方向光的衰减值
  * @param directional 方向光阴影数据
  * @param global 全局阴影数据
  * @param surfaceWS 目标表面
@@ -173,12 +190,16 @@ float GetDirectionalShadowAttenuation(DirectionalShadowData directional, ShadowD
         return 1.0;
     }
 
+    // 阴影采样法线偏移：查询点沿着法线方向做一点偏移，减轻浮点误差和斜面带来的阴影斑点
     float3 normalBias = surfaceWS.normal * (directional.normalBias * _CascadeData[global.cascadeIndex].y);
+    // 采样点
     float3 positionSTS = mul(
         _DirectionalShadowMatrices[directional.tileIndex],
         float4(surfaceWS.position + normalBias, 1.0)
     ).xyz;
+    // 对采样点进行采样
     float shadow = FilterDirectionalShadow(positionSTS);
+    // 级联混合处理
     if (global.cascadeBlend < 1.0)
     {
         normalBias = surfaceWS.normal *
@@ -192,8 +213,10 @@ float GetDirectionalShadowAttenuation(DirectionalShadowData directional, ShadowD
         );
     }
 
-    // 最终的衰减值 = [1, 采样得到的衰减值] 之间，strength 越大衰减得越多
+    // 最终的衰减值 = [1, 采样得到的衰减值] 之间，阴影强度越大衰减得越多
     return lerp(1.0, shadow, directional.strength);
 }
+
+// ===============================================
 
 #endif
