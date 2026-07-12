@@ -110,7 +110,7 @@ DirectionalShadowData GetDirectionalShadowData(int lightIndex, ShadowData shadow
 
 ```
 texelSize = 一格 shadow map 像素在世界空间里有多大
-         = 2 × 剔除球半径 / tile 边长像素数
+          = 2 × 剔除球半径 / tile 边长像素数
 ```
 
 为什么是 `2 × 半径`？因为剔除球的**直径**才是 tile 覆盖的世界宽度：

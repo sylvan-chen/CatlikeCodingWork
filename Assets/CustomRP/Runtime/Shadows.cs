@@ -305,7 +305,7 @@ namespace CustomRP
         /// </summary>
         private void SetCascadeData(int index, Vector4 cullingSphere, float tileSize)
         {
-            // 纹素大小
+            // 纹素大小(一格阴影贴图的像素，在世界空间有多大)
             float texelSize = 2f * cullingSphere.w / tileSize;
             // 把球稍微缩小一点，避免边缘出现 acne，Filter 越大缩得越多
             float filterSize = texelSize * ((float)_settings.Directional.Filter + 1f);
