@@ -12,8 +12,10 @@ namespace CustomRP
         [SerializeField]
         private bool _useDynamicBatching = false;
         [SerializeField]
+        /// <summary>对应 URP - 无，由 #pragma multi_compile_instancing 决定。URP 17 里被 GPU Resident Drawer 取代</summary>
         private bool _useGPUInstancing = true;
         [SerializeField]
+        /// <summary>对应 URP - 无，强制开启</summary>
         private bool _useSRPBatcher = true;
 
         [SerializeField]

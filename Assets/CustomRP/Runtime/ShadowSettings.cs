@@ -45,8 +45,10 @@ namespace CustomRP
         public struct DirectionalShadow
         {
             [Tooltip("阴影图集尺寸")]
+            /// <summary>对应 URP - Main Light Shadowmap Resolution</summary>
             public MapSize AtlasSize;
             [Tooltip("PCF 过滤模式")]
+            /// <summary>对应 URP - SoftShadowQuality (Low/Medium/High)</summary>
             public FilterMode Filter;
             [Range(1, 4)]
             [Tooltip("级联数量，每个方向光最多支持 4 个级联")]
@@ -57,10 +59,12 @@ namespace CustomRP
             public float CascadeRatio2;
             [Range(0f, 1f)]
             public float CascadeRatio3;
-            [SerializeField, Range(0.001f, 1f)]
+            [Range(0.001f, 1f)]
             [Tooltip("阴影级联衰减系数")]
+            /// <summary>对应 URP - Cascade Border</summary>
             public float CascadeFade;
             [Tooltip("级联混合模式（级联之间如何平滑过渡）")]
+            /// <summary>对应 URP - 只有 Soft (开启 Soft Shadow)</summary>
             public CascadeBlendMode CascadeBlend;
 
             public Vector3 CascadeRatios => new Vector3(CascadeRatio1, CascadeRatio2, CascadeRatio3);
@@ -68,6 +72,7 @@ namespace CustomRP
 
         [SerializeField, Min(0.001f)]
         [Tooltip("阴影最大投射距离")]
+        /// <summary>对应 URP - Shadow Distance</summary>
         private float _maxDistance = 100f;
         [SerializeField, Range(0.001f, 1f)]
         [Tooltip("阴影远距离渐隐的衰减系数")]
