@@ -106,6 +106,8 @@ DirectionalShadowData GetDirectionalShadowData(int lightIndex, ShadowData shadow
 
 ## 三、texelSize × √2 推导
 
+`_CascadeData.y` 中存储了纹素大小，这是后面法线要偏移的长度。
+
 ### 3.1 texelSize 是什么
 
 ```
@@ -188,7 +190,7 @@ new Vector4(
 ### 4.1 全局距离衰减
 
 ```hlsl
-// Shadows.hlsl:55
+// Shadows.hlsl
 data.strength = FadedShadowStrength(surfaceWS.depth, _ShadowDistanceFade.x, _ShadowDistanceFade.y);
 //                          = saturate((1 - depth/MaxDistance) * MaxDistance/DistanceFade)
 ```
@@ -231,7 +233,7 @@ Unity 的 view 空间看向 -Z，所以 `viewZ` 是负数。取负得到**相机
 ## 五、Cascade Fade（最后一个级联内部渐隐）
 
 ```hlsl
-// Shadows.hlsl:62-73
+// Shadows.hlsl
 if (distanceSqr < sphere.w)  // 落在某个级联球内
 {
     float fade = FadedShadowStrength(
@@ -295,7 +297,7 @@ private void SetCascadeData(int index, Vector4 cullingSphere, float tileSize)
 ### 6.2 代码实现
 
 ```hlsl
-// Shadows.hlsl:4-15
+// Shadows.hlsl
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Shadow/ShadowSamplingTent.hlsl"
 
 #if defined(_DIRECTIONAL_PCF3)
@@ -315,7 +317,7 @@ private void SetCascadeData(int index, Vector4 cullingSphere, float tileSize)
 C# 端切 keyword：
 
 ```csharp
-// Shadows.cs:222
+// Shadows.cs
 SetKeywords(DirectionalFilterKeywords, (int)_settings.Directional.Filter - 1);
 ```
 
@@ -324,7 +326,7 @@ SetKeywords(DirectionalFilterKeywords, (int)_settings.Directional.Filter - 1);
 ### 6.3 实际滤波
 
 ```hlsl
-// Shadows.hlsl:110-128
+// Shadows.hlsl
 float FilterDirectionalShadow(float3 positionSTS)
 {
     #if defined(DIRECTIONAL_FILTER_SETUP)
@@ -351,7 +353,7 @@ float FilterDirectionalShadow(float3 positionSTS)
 `_ShadowAtlasSize`：
 
 ```csharp
-// Shadows.cs:224
+// Shadows.cs
 _buffer.SetGlobalVector(ShadowAtlasSizeId, new Vector4(atlasSize, 1f / atlasSize));
 ```
 
@@ -387,10 +389,10 @@ Cascade 0  ████████│  Cascade 1  ░░░░░░│  Cascad
 `GetShadowData` 的 `cascadeBlend` 是这个意思：
 
 ```hlsl
-// Shadows.hlsl:54
+// Shadows.hlsl
 data.cascadeBlend = 1.0;
 
-// Shadows.hlsl:70-73 (非最后一个级联时)
+// Shadows.hlsl (非最后一个级联时)
 data.cascadeBlend = fade;  // 越靠近级联边缘 → blend 越接近 0
 ```
 

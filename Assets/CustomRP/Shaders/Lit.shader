@@ -48,6 +48,7 @@
             #pragma shader_feature _RECEIVE_SHADOWS
             #pragma shader_feature _ _SHADOWS_CLIP _SHADOWS_DITHER
             #pragma shader_feature _PREMULTIPLY_ALPHA
+            // 4 个不同 PCF 过滤模式的变体
             #pragma multi_compile _ _DIRECTIONAL_PCF3 _DIRECTIONAL_PCF5 _DIRECTIONAL_PCF7
             #pragma multi_compile _ _CASCADE_BLEND_SOFT _CASCADE_BLEND_DITHER
             #pragma multi_compile_instancing // 支持 GPU Instance 变体

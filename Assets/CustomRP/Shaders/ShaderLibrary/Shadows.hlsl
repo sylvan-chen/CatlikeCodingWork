@@ -49,9 +49,9 @@ struct ShadowData
 };
 
 /**
- * 获取根据距离衰减的阴影强度
+ * 按距离做强度衰减
  * @param distance 距离
- * @param scale 相对于最大阴影距离的比例
+ * @param scale 当前距离相对于最大阴影距离的比例
  * @param fade 衰减系数
  * @return 最终阴影强度
  */
@@ -77,8 +77,10 @@ ShadowData GetShadowData(Surface surfaceWS)
     {
         float4 sphere = _CascadeCullingSpheres[i];
         float distanceSqr = DistanceSquared(surfaceWS.position, sphere.xyz);
+        // 落在级联剔除球内
         if (distanceSqr < sphere.w)
         {
+            // 按离当前级联球的边界的距离衰减
             float fade = FadedShadowStrength(
                 distanceSqr, _CascadeData[i].x, _ShadowDistanceFade.z
             );
@@ -89,7 +91,7 @@ ShadowData GetShadowData(Surface surfaceWS)
             }
             else
             {
-                // 其他级联：用 fade 当 blend 系数
+                // 非最后一个级联时，启用级联混合，越靠近级联边缘，blend 越接近 0
                 data.cascadeBlend = fade;
             }
             break;

@@ -234,6 +234,7 @@ namespace CustomRP
                     1f / (1f - cascadeFade * cascadeFade)
                 )
             );
+            // PCF2x2(无)、PCF3x3、PCF5x5、PCF7x7 分别对应 0, 1, 2, 3
             SetKeywords(DirectionalFilterKeywords, (int)_settings.Directional.Filter - 1);
             SetKeywords(CascadeBlendKeywords, (int)_settings.Directional.CascadeBlend - 1);
             _buffer.SetGlobalVector(ShadowAtlasSizeId, new Vector4(atlasSize, 1f / atlasSize));
